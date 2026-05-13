@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HomeRun · Property management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <style>
+    :root {
+      --teal-950:#081413;--teal-900:#0B1B19;--teal-850:#0F2322;--teal-800:#14302D;
+      --teal-750:#183835;--teal-700:#1F3C39;--teal-600:#245049;--teal-500:#2A8B82;
+      --teal-400:#3FA89E;--teal-300:#5EEAD4;--teal-200:#99F6E4;
+      --cream-50:#F4ECDC;--cream-100:#E8DFC9;--cream-200:#C9BFA8;
+      --cream-300:#A39A86;--cream-400:#7A7363;--cream-500:#524C40;
+      --safe-500:#88B07A;--safe-300:#B6D3A8;
+      --out-500:#E07A5F;--out-300:#EDA593;
+      --play-500:#D9B26F;--play-300:#ECCF9B;
+      --info-500:#6BA8C7;
+      --bg-canvas:var(--teal-950);
+      --surface-0:var(--teal-900);--surface-1:var(--teal-850);
+      --surface-2:var(--teal-800);--surface-3:var(--teal-750);
+      --fg-1:var(--cream-50);--fg-2:var(--cream-200);
+      --fg-3:var(--cream-300);--fg-4:var(--cream-400);
+      --line-1:#1F3C39;--line-2:#2A4F4B;--line-3:#355F5A;
+      --brand:var(--teal-500);--brand-hover:var(--teal-400);--brand-press:var(--teal-600);
+      --brand-faint:rgba(42,139,130,0.12);--accent:var(--teal-300);
+      --on-brand:var(--cream-50);--on-accent:var(--teal-950);
+      --safe-tint:rgba(136,176,122,0.14);--out-tint:rgba(224,122,95,0.14);
+      --play-tint:rgba(217,178,111,0.14);--info-tint:rgba(107,168,199,0.14);
+      --font-display:'Instrument Serif','Georgia',serif;
+      --font-sans:'Geist','Inter',system-ui,sans-serif;
+      --font-mono:'Geist Mono','JetBrains Mono',monospace;
+      --r-1:6px;--r-2:10px;--r-3:16px;--r-pill:999px;
+      --shadow-1:0 1px 0 0 rgba(255,255,255,0.04) inset,0 8px 24px -8px rgba(0,0,0,0.5);
+      --shadow-2:0 1px 0 0 rgba(255,255,255,0.05) inset,0 16px 48px -12px rgba(0,0,0,0.6);
+      --focus-ring:0 0 0 3px rgba(94,234,212,0.35);
+      --ease-out:cubic-bezier(0.2,0,0,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    html,body{margin:0;background:var(--bg-canvas);color:var(--fg-1);
+      font-family:var(--font-sans);font-size:16px;line-height:1.45;
+      -webkit-font-smoothing:antialiased;}
+    input,select,button,textarea{font-family:inherit;}
+    input::placeholder{color:var(--fg-4);}
+    select option{background:var(--surface-2);color:var(--fg-1);}
+    button:focus-visible,input:focus-visible,select:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+    ::-webkit-scrollbar{width:8px;height:8px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--teal-800);border-radius:999px;}
+    ::-webkit-scrollbar-thumb:hover{background:var(--teal-700);}
+    .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+    .meta{font-family:var(--font-sans);font-size:11px;color:var(--fg-3);line-height:1.3;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useReducer } = React;
+
+// ── STORE ────────────────────────────────────────────────────────────────────
+const STORE_KEY = 'homerun_v2';
+const defaultStore = () => ({
+  properties: [
+    { id:'hammond', name:'Hammond Fourplex', address:'1234 Main St, Hammond, IN 46320',
+      city:'Hammond, IN', units:4, yearBuilt:1962, dot:'#88B07A' },
+    { id:'gary',    name:'Gary Duplex',      address:'809 Pierce St, Gary, IN 46402',
+      city:'Gary, IN',    units:2, yearBuilt:1948, dot:'#6BA8C7' },
+  ],
+  tenants: [
+    { id:'h-1', property:'hammond', label:'Unit 1', tenant:'Marcus Johnson', initials:'MJ',
+      rent:1100, hapRent:null, tenantShare:null, lease:'1-year',       leaseEnd:'2025-12-31', moveIn:'2024-01-01', status:'occupied' },
+    { id:'h-2', property:'hammond', label:'Unit 2', tenant:'Lisa Torres',    initials:'LT',
+      rent:1050, hapRent:null, tenantShare:null, lease:'6-month',      leaseEnd:'2026-08-31', moveIn:'2025-03-01', status:'occupied' },
+    { id:'h-3', property:'hammond', label:'Unit 3', tenant:'David Kim',      initials:'DK',
+      rent:1050, hapRent:700,  tenantShare:350,  lease:'Section 8',   leaseEnd:'2026-04-30', moveIn:'2023-05-01', status:'late', daysLate:10 },
+    { id:'h-4', property:'hammond', label:'Unit 4', tenant:null, initials:null,
+      rent:1150, hapRent:null, tenantShare:null, lease:null, leaseEnd:null, status:'vacant', vacantSince:'2026-03-15', listedOn:'Zillow + Facebook' },
+    { id:'g-1', property:'gary',    label:'Unit A', tenant:'Aliyah Brown',   initials:'AB',
+      rent:950,  hapRent:null, tenantShare:null, lease:'1-year',       leaseEnd:'2026-09-30', moveIn:'2025-10-01', status:'occupied' },
+    { id:'g-2', property:'gary',    label:'Unit B', tenant:'Marcus Wright',  initials:'MW',
+      rent:925,  hapRent:null, tenantShare:null, lease:'Month-to-month',leaseEnd:null,        moveIn:'2022-06-01', status:'occupied' },
+  ],
+  payments: [
+    { id:'P-241', tenant:'Marcus Johnson', unit:'Unit 1', property:'hammond', period:'May 2026',   method:'Zelle',           source:'Tenant', amount:1100, status:'paid', date:'2026-05-01' },
+    { id:'P-240', tenant:'Lisa Torres',   unit:'Unit 2', property:'hammond', period:'May 2026',   method:'Bank transfer',   source:'Tenant', amount:1050, status:'paid', date:'2026-05-01' },
+    { id:'P-239', tenant:'David Kim',     unit:'Unit 3', property:'hammond', period:'May 2026',   method:'HAP (Section 8)', source:'HAP',    amount:700,  status:'paid', date:'2026-05-03' },
+    { id:'P-238', tenant:'David Kim',     unit:'Unit 3', property:'hammond', period:'April 2026', method:'Check',           source:'Tenant', amount:350,  status:'late', date:'2026-04-01' },
+    { id:'P-237', tenant:'Marcus Johnson',unit:'Unit 1', property:'hammond', period:'April 2026', method:'Zelle',           source:'Tenant', amount:1100, status:'paid', date:'2026-04-01' },
+    { id:'P-236', tenant:'Lisa Torres',   unit:'Unit 2', property:'hammond', period:'April 2026', method:'Bank transfer',   source:'Tenant', amount:1050, status:'paid', date:'2026-04-01' },
+    { id:'P-235', tenant:'David Kim',     unit:'Unit 3', property:'hammond', period:'April 2026', method:'HAP (Section 8)', source:'HAP',    amount:700,  status:'paid', date:'2026-04-03' },
+    { id:'P-234', tenant:'Marcus Johnson',unit:'Unit 1', property:'hammond', period:'March 2026', method:'Zelle',           source:'Tenant', amount:1100, status:'paid', date:'2026-03-01' },
+    { id:'P-233', tenant:'Aliyah Brown',  unit:'Unit A', property:'gary',    period:'May 2026',   method:'Bank transfer',   source:'Tenant', amount:950,  status:'paid', date:'2026-05-01' },
+    { id:'P-232', tenant:'Marcus Wright', unit:'Unit B', property:'gary',    period:'May 2026',   method:'Cash',            source:'Tenant', amount:925,  status:'paid', date:'2026-05-02' },
+    { id:'P-231', tenant:'Aliyah Brown',  unit:'Unit A', property:'gary',    period:'April 2026', method:'Bank transfer',   source:'Tenant', amount:950,  status:'paid', date:'2026-04-01' },
+  ],
+  expenses: [
+    { id:'E-148', vendor:'Wells Fargo',     cat:'Mortgage',  unit:'Building', property:'hammond', desc:'Mortgage P&I — May',         amount:1842, status:'paid',    date:'2026-05-01', method:'ACH' },
+    { id:'E-147', vendor:'NIPSCO',          cat:'Utilities', unit:'Building', property:'hammond', desc:'Gas — May',                   amount:218,  status:'paid',    date:'2026-05-04', method:'Auto-pay' },
+    { id:'E-146', vendor:'Hammond Water',   cat:'Utilities', unit:'Building', property:'hammond', desc:'Water — Apr',                 amount:184,  status:'paid',    date:'2026-04-22', method:'Check' },
+    { id:'E-145', vendor:'Ace Plumbing',    cat:'Repairs',   unit:'Unit 3',   property:'hammond', desc:'Kitchen sink drain snake',    amount:240,  status:'paid',    date:'2026-04-18', method:'Visa' },
+    { id:'E-144', vendor:'State Farm',      cat:'Insurance', unit:'Building', property:'hammond', desc:'Landlord policy — quarterly', amount:412,  status:'paid',    date:'2026-04-12', method:'ACH' },
+    { id:'E-143', vendor:'NIPSCO',          cat:'Utilities', unit:'Building', property:'hammond', desc:'Gas — Apr',                   amount:198,  status:'paid',    date:'2026-04-04', method:'Auto-pay' },
+    { id:'E-142', vendor:'Wells Fargo',     cat:'Mortgage',  unit:'Building', property:'hammond', desc:'Mortgage P&I — Apr',         amount:1842, status:'paid',    date:'2026-04-01', method:'ACH' },
+    { id:'E-141', vendor:'HomeDepot',       cat:'Supplies',  unit:'Unit 4',   property:'hammond', desc:'Paint, drop cloths, brushes',amount:186,  status:'paid',    date:'2026-03-28', method:'Visa' },
+    { id:'E-140', vendor:'City of Hammond', cat:'Fees',      unit:'Building', property:'hammond', desc:'Rental registration (4 units)',amount:20, status:'pending', date:'2026-04-15', method:'Check' },
+    { id:'E-139', vendor:"Tony's HVAC",     cat:'Repairs',   unit:'Unit 3',   property:'hammond', desc:'HVAC diagnostic',             amount:145,  status:'paid',    date:'2026-04-10', method:'Visa' },
+    { id:'E-138', vendor:'Gary Sanitary',   cat:'Utilities', unit:'Building', property:'gary',    desc:'Sewer — Apr',                 amount:64,   status:'paid',    date:'2026-04-18', method:'Check' },
+  ],
+  repairs: [
+    { id:'R-019', title:'HVAC not cooling',           unit:'Unit 3',   property:'hammond', priority:'high',   status:'in-progress', vendor:"Tony's HVAC",  opened:'2026-04-08', notes:'Diagnostic complete, awaiting parts.' },
+    { id:'R-018', title:'Kitchen sink slow drain',    unit:'Unit 3',   property:'hammond', priority:'normal', status:'completed',   vendor:'Ace Plumbing', opened:'2026-04-14', closed:'2026-04-18', notes:'Snaked main line.' },
+    { id:'R-017', title:'Front porch handrail loose', unit:'Building', property:'hammond', priority:'normal', status:'open',        vendor:null,           opened:'2026-04-22', notes:'Self-repair planned.' },
+    { id:'R-016', title:'Bathroom fan replacement',   unit:'Unit A',   property:'gary',    priority:'low',    status:'open',        vendor:null,           opened:'2026-04-12', notes:'' },
+  ],
+  schedTasks: [
+    { id:'s-1', date:'2026-05-15', label:'Hammond registration — file',      tag:'compliance', tone:'critical' },
+    { id:'s-2', date:'2026-05-18', label:'HVAC filters — Hammond all units', tag:'recurring',  tone:'info' },
+    { id:'s-3', date:'2026-05-20', label:"Tony's HVAC — install parts U3",   tag:'repair',     tone:'warning' },
+    { id:'s-4', date:'2026-06-01', label:'June rent due',                    tag:'rent',       tone:'info' },
+    { id:'s-5', date:'2026-06-04', label:'Smoke alarm inspection — Gary',    tag:'compliance', tone:'warning' },
+  ],
+  compliance: {
+    hammond: [
+      { juris:'City of Hammond', icon:'map-pin', items:[
+        { title:'Annual rental registration',         desc:'Register all units by April 15. $5/unit. Fine: up to $2,500/unit/day.', due:'Due annually — April 15', done:false, severity:'critical' },
+        { title:"Tenant's Bill of Rights compliance", desc:'Hammond local ordinance with additional tenant protections.',           due:'Ongoing',                  done:false, severity:'warning' },
+        { title:'Crime-Free Multi-Housing certificate',desc:'Optional cert. Two-hour landlord training.',                          due:'Renew every 3 years',       done:false },
+        { title:'Property maintenance code inspection',desc:'Triggered by complaint or biennial cycle.',                           due:'As required',               done:false },
+      ]},
+      { juris:'State of Indiana', icon:'landmark', items:[
+        { title:'48-hour entry notice',               desc:'Give 48 hours written notice before entering for repairs.',            due:'Each entry',                done:true },
+        { title:'Lead-based paint disclosure',        desc:'Pre-1978 buildings require Lead-Based Paint Disclosure each lease.',   due:'Before each lease',         done:false, severity:'warning', fed:true },
+        { title:'Security deposit return — 45 days', desc:'Return deposit + itemized list within 45 days of move-out.',           due:'Per move-out',              done:false },
+        { title:'Habitability standards',             desc:'Plumbing, heating, weatherproofing maintained.',                      due:'Ongoing',                   done:false },
+        { title:'Anti-discrimination — Fair Housing', desc:'IC 22-9-1 protected classes in marketing & screening.',               due:'Ongoing',                   done:false },
+        { title:'Smoke detector requirement',         desc:'Functional smoke alarm in each sleeping area.',                       due:'Each unit',                 done:false },
+        { title:'Pay or Quit — 10-day notice',        desc:'Required before any eviction for non-payment.',                       due:'Per incident',              done:false },
+        { title:'No mandatory grace period',          desc:'Indiana law does not require a rent grace period.',                   due:'Info only',                 done:true },
+        { title:'No rent control',                    desc:'Indiana preempts municipal rent control.',                            due:'Info only',                 done:true },
+      ]},
+      { juris:'Federal', icon:'flag', items:[
+        { title:'Lead-based paint disclosure', desc:'Title X, Section 1018 · 42 U.S.C. § 4852(d). Pre-1978 buildings.', due:'Before each lease', done:false, severity:'warning' },
+        { title:'Fair Housing Act compliance', desc:'7 protected classes. Applies to marketing, screening, and rental terms.',  due:'Ongoing',          done:false },
+      ]},
+    ],
+    gary: [
+      { juris:'City of Gary', icon:'map-pin', items:[
+        { title:'Annual rental registration', desc:'Register all units yearly.', due:'Annual',   done:true },
+        { title:'Inspection certificate',     desc:'Renew every 2 years.',       due:'Biennial', done:true },
+      ]},
+      { juris:'State of Indiana', icon:'landmark', items:[
+        { title:'48-hour entry notice',               desc:'', due:'Each entry',  done:true },
+        { title:'Habitability standards',             desc:'', due:'Ongoing',     done:false },
+        { title:'Security deposit — 45 days',        desc:'', due:'Per move-out',done:false },
+      ]},
+      { juris:'Federal', icon:'flag', items:[
+        { title:'Fair Housing Act compliance', desc:'', due:'Ongoing', done:false },
+      ]},
+    ],
+  },
+});
+
+function loadStore() {
+  try { const s = localStorage.getItem(STORE_KEY); if(s) return JSON.parse(s); } catch(e){}
+  return defaultStore();
+}
+function saveStore(s) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch(e){} }
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = (n,dec=0) => '$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const fmtSigned = (n,dec=0) => (n<0?'−':'')+fmt(n,dec);
+function compProg(groups=[]) {
+  let done=0,total=0;
+  groups.forEach(g=>g.items.forEach(it=>{total++;if(it.done)done++;}));
+  return {done,total,pct:total===0?0:Math.round(done/total*100)};
+}
+function grpProg(g) { const d=g.items.filter(i=>i.done).length; return {done:d,total:g.items.length}; }
+
+// ── PRIMITIVES ───────────────────────────────────────────────────────────────
+const Card = ({children,padding=24,style,accent}) => (
+  <div style={{background:'var(--surface-1)',border:'1px solid var(--line-1)',borderRadius:'var(--r-2)',padding,
+    borderLeft:accent?`3px solid ${accent}`:undefined,...style}}>{children}</div>
+);
+const Dia = ({color='currentColor',filled=true,size=8,style}) => (
+  <span style={{display:'inline-block',width:size,height:size,
+    background:filled?color:'transparent',border:filled?'none':`1.5px solid ${color}`,
+    transform:'rotate(45deg)',flexShrink:0,...style}}/>
+);
+const Eyebrow = ({children,style}) => (
+  <div style={{fontFamily:'Geist,sans-serif',fontSize:11,fontWeight:500,letterSpacing:'0.08em',
+    textTransform:'uppercase',color:'var(--fg-3)',...style}}>{children}</div>
+);
+const Badge = ({children,tone='neutral',subtle,style}) => {
+  const T={safe:{bg:'var(--safe-tint)',fg:'var(--safe-500)'},out:{bg:'var(--out-tint)',fg:'var(--out-500)'},
+    play:{bg:'var(--play-tint)',fg:'var(--play-500)'},info:{bg:'var(--info-tint)',fg:'var(--info-500)'},
+    neutral:{bg:'var(--surface-2)',fg:'var(--fg-2)'},brand:{bg:'var(--brand-faint)',fg:'var(--teal-300)'},
+    ghost:{bg:'transparent',fg:'var(--fg-3)'}};
+  const t=T[tone]||T.neutral;
+  return <span style={{display:'inline-flex',alignItems:'center',gap:5,
+    background:subtle?'transparent':t.bg,color:t.fg,
+    border:subtle?`1px solid ${t.fg}33`:'none',
+    fontFamily:'Geist,sans-serif',fontSize:11,fontWeight:500,
+    padding:'3px 9px',borderRadius:'var(--r-pill)',letterSpacing:0.2,whiteSpace:'nowrap',...style}}>{children}</span>;
+};
+const Btn = ({children,variant='secondary',onClick,style,icon,iconRight,size='md',type}) => {
+  const V={primary:{background:'var(--brand)',color:'var(--on-brand)',border:'1px solid var(--brand)'},
+    accent:{background:'var(--accent)',color:'var(--on-accent)',border:'1px solid var(--accent)'},
+    secondary:{background:'var(--surface-2)',color:'var(--fg-1)',border:'1px solid var(--line-2)'},
+    ghost:{background:'transparent',color:'var(--fg-2)',border:'1px solid transparent'},
+    outline:{background:'transparent',color:'var(--fg-1)',border:'1px solid var(--line-2)'},
+    danger:{background:'var(--out-tint)',color:'var(--out-500)',border:'1px solid rgba(224,122,95,0.35)'}};
+  const S={sm:{padding:'5px 10px',fontSize:12},md:{padding:'7px 12px',fontSize:13},lg:{padding:'10px 16px',fontSize:14}};
+  return <button type={type||'button'} onClick={onClick} style={{
+    fontFamily:'Geist,sans-serif',fontWeight:500,borderRadius:'var(--r-1)',
+    display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center',
+    cursor:'pointer',transition:'background 120ms',...S[size],...V[variant],...style}}>
+    {icon&&<i data-lucide={icon} style={{width:14,height:14}}/>}
+    {children}
+    {iconRight&&<i data-lucide={iconRight} style={{width:14,height:14}}/>}
+  </button>;
+};
+const Metric = ({label,value,tone,sub,mono=true,first}) => (
+  <div style={{padding:'16px 22px',borderLeft:first?'none':'1px solid var(--line-1)',minWidth:0,flex:1}}>
+    <Eyebrow>{label}</Eyebrow>
+    <div className={mono?'mono':''} style={{fontSize:24,fontWeight:500,marginTop:8,
+      color:tone?`var(--${tone}-500)`:'var(--fg-1)',letterSpacing:'-0.01em',lineHeight:1.05}}>{value}</div>
+    {sub&&<div style={{fontSize:11,marginTop:5,color:'var(--fg-3)'}}>{sub}</div>}
+  </div>
+);
+const MetricStrip = ({items}) => (
+  <Card padding={0} style={{overflow:'hidden'}}>
+    <div style={{display:'flex'}}>{items.map((it,i)=><Metric key={i} {...it} first={i===0}/>)}</div>
+  </Card>
+);
+const AItem = ({tier='info',icon,title,detail,action,meta,onAction}) => {
+  const C={critical:{border:'var(--out-500)',ic:'var(--out-500)',bg:'rgba(224,122,95,0.06)'},
+    warning:{border:'var(--play-500)',ic:'var(--play-500)',bg:'rgba(217,178,111,0.05)'},
+    info:{border:'var(--teal-500)',ic:'var(--teal-300)',bg:'rgba(42,139,130,0.06)'}};
+  const c=C[tier];
+  return <div style={{display:'grid',gridTemplateColumns:'22px 1fr auto',gap:14,alignItems:'start',
+    background:c.bg,border:'1px solid var(--line-1)',borderLeft:`3px solid ${c.border}`,
+    borderRadius:'var(--r-1)',padding:'12px 14px'}}>
+    <i data-lucide={icon} style={{width:16,height:16,color:c.ic,marginTop:2}}/>
+    <div style={{minWidth:0}}>
+      <div style={{fontSize:13,fontWeight:600,color:'var(--fg-1)',lineHeight:1.3}}>{title}</div>
+      <div style={{fontSize:12,color:'var(--fg-2)',marginTop:3,lineHeight:1.4}}>{detail}</div>
+      {meta&&<div className="meta" style={{marginTop:6}}>{meta}</div>}
+    </div>
+    {action&&<button onClick={onAction} style={{background:'transparent',border:'1px solid var(--line-2)',
+      color:'var(--fg-1)',cursor:'pointer',fontFamily:'Geist,sans-serif',fontWeight:500,fontSize:12,
+      padding:'5px 10px',borderRadius:'var(--r-1)',whiteSpace:'nowrap'}}>{action} →</button>}
+  </div>;
+};
+const Prog = ({value,total,height=6,color='var(--brand)',track='var(--teal-900)'}) => (
+  <div style={{height,background:track,borderRadius:999,overflow:'hidden'}}>
+    <div style={{width:`${total?Math.min(100,value/total*100):0}%`,height:'100%',
+      background:color,borderRadius:999,transition:'width 200ms'}}/>
+  </div>
+);
+const SHead = ({title,icon,action,meta}) => (
+  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,gap:12}}>
+    <div style={{display:'flex',alignItems:'center',gap:10}}>
+      {icon&&<i data-lucide={icon} style={{width:16,height:16,color:'var(--fg-2)'}}/>}
+      <h4 style={{fontSize:15,fontWeight:600,color:'var(--fg-1)',margin:0}}>{title}</h4>
+      {meta&&<span className="meta">{meta}</span>}
+    </div>
+    {action}
+  </div>
+);
+const Chk = ({checked,onChange,disabled}) => (
+  <button onClick={()=>!disabled&&onChange&&onChange(!checked)} disabled={disabled} style={{
+    width:18,height:18,flexShrink:0,
+    background:checked?'var(--brand)':'transparent',
+    border:`1.5px solid ${checked?'var(--brand)':'var(--line-2)'}`,
+    borderRadius:4,cursor:disabled?'default':'pointer',
+    display:'inline-flex',alignItems:'center',justifyContent:'center',
+    opacity:disabled?0.5:1,padding:0,transition:'all 120ms'}}>
+    {checked&&<i data-lucide="check" style={{width:12,height:12,color:'var(--on-brand)'}}/>}
+  </button>
+);
+const Modal = ({open,onClose,title,subtitle,children,footer,width=520}) => {
+  if(!open)return null;
+  return <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,
+    background:'rgba(8,20,19,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:'var(--surface-3)',border:'1px solid var(--line-2)',
+      borderRadius:'var(--r-3)',width:'100%',maxWidth:width,maxHeight:'90vh',
+      boxShadow:'var(--shadow-2)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'22px 24px 12px',borderBottom:'1px solid var(--line-1)',display:'flex',justifyContent:'space-between',alignItems:'start'}}>
+        <div>
+          {title&&<h3 style={{fontSize:18,fontWeight:600,margin:0,color:'var(--fg-1)'}}>{title}</h3>}
+          {subtitle&&<p className="meta" style={{marginTop:5}}>{subtitle}</p>}
+        </div>
+        <button onClick={onClose} style={{background:'transparent',border:'none',color:'var(--fg-3)',cursor:'pointer',padding:6,borderRadius:'var(--r-1)'}}>
+          <i data-lucide="x" style={{width:18,height:18}}/>
+        </button>
+      </div>
+      <div style={{padding:24,overflow:'auto',flex:1}}>{children}</div>
+      {footer&&<div style={{padding:'14px 20px',borderTop:'1px solid var(--line-1)',display:'flex',justifyContent:'flex-end',gap:8,background:'var(--surface-2)'}}>{footer}</div>}
+    </div>
+  </div>;
+};
+const Field = ({label,required,optional,hint,children,style}) => (
+  <div style={{display:'flex',flexDirection:'column',gap:6,...style}}>
+    <div style={{display:'flex',alignItems:'baseline',gap:6}}>
+      <label style={{fontFamily:'Geist,sans-serif',fontSize:11,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--fg-3)',whiteSpace:'nowrap'}}>
+        {label}{required&&<span style={{color:'var(--out-500)',marginLeft:2}}>*</span>}
+      </label>
+      {optional&&<span style={{fontSize:10,color:'var(--fg-4)',fontStyle:'italic'}}>optional</span>}
+    </div>
+    {children}
+    {hint&&<div className="meta" style={{fontSize:11}}>{hint}</div>}
+  </div>
+);
+const Inp = ({value,onChange,placeholder,type='text',style,prefix}) => (
+  <div style={{display:'flex',alignItems:'center',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+    borderRadius:'var(--r-1)',padding:'0 10px',...style}}>
+    {prefix&&<span style={{color:'var(--fg-3)',fontFamily:'Geist Mono,monospace',fontSize:13,marginRight:6}}>{prefix}</span>}
+    <input value={value||''} onChange={e=>onChange&&onChange(e.target.value)} placeholder={placeholder} type={type}
+      style={{flex:1,background:'transparent',border:'none',outline:'none',color:'var(--fg-1)',
+        fontFamily:type==='number'?'Geist Mono,monospace':'Geist,sans-serif',fontSize:14,padding:'9px 0'}}/>
+  </div>
+);
+const Sel = ({value,onChange,options,placeholder,style}) => (
+  <select value={value} onChange={e=>onChange&&onChange(e.target.value)} style={{
+    background:'var(--surface-2)',border:'1px solid var(--line-2)',borderRadius:'var(--r-1)',
+    padding:'9px 12px',width:'100%',color:'var(--fg-1)',fontFamily:'Geist,sans-serif',fontSize:14,
+    cursor:'pointer',appearance:'none',
+    backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23A39A86' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>")`,
+    backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32,...style}}>
+    {placeholder&&<option value="">{placeholder}</option>}
+    {options.map(o=><option key={o.value||o} value={o.value||o}>{o.label||o}</option>)}
+  </select>
+);
+const LRow = ({primary,secondary,badges,right,rightSub,status,statusTone,onClick}) => (
+  <button onClick={onClick} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:16,alignItems:'center',
+    width:'100%',textAlign:'left',padding:'14px 20px',background:'var(--surface-1)',
+    border:'1px solid var(--line-1)',borderRadius:'var(--r-2)',cursor:'pointer',fontFamily:'Geist,sans-serif',
+    transition:'background 120ms'}}>
+    <div style={{minWidth:0}}>
+      <div style={{fontSize:14,fontWeight:600,color:'var(--fg-1)'}}>{primary}</div>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4,fontSize:12,color:'var(--fg-3)',flexWrap:'wrap'}}>
+        <span>{secondary}</span>{badges}
+      </div>
+    </div>
+    <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,whiteSpace:'nowrap'}}>
+      <div className="mono" style={{fontSize:15,fontWeight:500,color:'var(--fg-1)'}}>{right}</div>
+      <div style={{display:'flex',alignItems:'center',gap:6}}>
+        {status&&<Badge tone={statusTone}>{status}</Badge>}
+        {rightSub&&<span className="mono" style={{fontSize:11,color:'var(--fg-3)'}}>{rightSub}</span>}
+      </div>
+    </div>
+  </button>
+);
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+const NAV = [
+  {label:'Overview',items:[{key:'dashboard',label:'Dashboard',icon:'layout-dashboard'},{key:'portfolio',label:'Portfolio',icon:'building'}]},
+  {label:'Property',items:[{key:'units',label:'Units',icon:'door-open'},{key:'tenants',label:'Tenants',icon:'users'}]},
+  {label:'Finance',items:[{key:'payments',label:'Payments',icon:'wallet-minimal'},{key:'expenses',label:'Expenses',icon:'receipt'},{key:'financials',label:'Financials',icon:'trending-up'}]},
+  {label:'Operations',items:[{key:'repairs',label:'Repairs',icon:'wrench'},{key:'schedule',label:'Schedule',icon:'calendar'}]},
+  {label:'Compliance',items:[{key:'local-laws',label:'Local laws',icon:'shield'},{key:'section-8',label:'Section 8',icon:'key-round'}]},
+  {label:'Tools',items:[{key:'documents',label:'Documents',icon:'file-text'},{key:'checklists',label:'Checklists',icon:'clipboard-check'}]},
+];
+
+const PropSwitcher = ({properties,current,onChange,onAdd}) => {
+  const [open,setOpen]=useState(false);
+  const cur=properties.find(p=>p.id===current)||properties[0];
+  return <div style={{position:'relative',padding:'0 12px 16px'}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{width:'100%',display:'flex',alignItems:'center',gap:10,
+      background:'var(--surface-2)',border:'1px solid var(--line-1)',borderRadius:'var(--r-2)',
+      padding:'10px 12px',cursor:'pointer',textAlign:'left',color:'var(--fg-1)',fontFamily:'Geist,sans-serif'}}>
+      <Dia color={cur.dot} size={9}/>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:600,color:'var(--fg-1)',lineHeight:1.2}}>{cur.name}</div>
+        <div style={{fontSize:11,color:'var(--fg-3)',marginTop:2}}>{cur.units} units · {cur.city.split(',')[0]}</div>
+      </div>
+      <i data-lucide="chevrons-up-down" style={{width:14,height:14,color:'var(--fg-3)'}}/>
+    </button>
+    {open&&<div style={{position:'absolute',top:'calc(100% - 8px)',left:12,right:12,zIndex:50,
+      background:'var(--surface-3)',border:'1px solid var(--line-2)',borderRadius:'var(--r-2)',
+      boxShadow:'var(--shadow-2)',padding:6}}>
+      {properties.map(p=><button key={p.id} onClick={()=>{onChange(p.id);setOpen(false);}} style={{
+        width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:'var(--r-1)',
+        background:p.id===current?'var(--surface-2)':'transparent',color:'var(--fg-1)',
+        border:'none',cursor:'pointer',textAlign:'left',fontFamily:'Geist,sans-serif'}}>
+        <Dia color={p.dot} size={8}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,color:'var(--fg-1)',fontWeight:500}}>{p.name}</div>
+          <div style={{fontSize:11,color:'var(--fg-3)'}}>{p.units} units · {p.city.split(',')[0]}</div>
+        </div>
+        {p.id===current&&<i data-lucide="check" style={{width:13,height:13,color:'var(--accent)'}}/>}
+      </button>)}
+      <div style={{borderTop:'1px solid var(--line-1)',marginTop:4,paddingTop:4}}>
+        <button onClick={()=>{setOpen(false);onAdd();}} style={{width:'100%',display:'flex',alignItems:'center',gap:10,
+          padding:'9px 10px',borderRadius:'var(--r-1)',background:'transparent',color:'var(--accent)',
+          border:'none',cursor:'pointer',fontFamily:'Geist,sans-serif',fontSize:13,fontWeight:500}}>
+          <i data-lucide="plus" style={{width:14,height:14}}/> Add property
+        </button>
+      </div>
+    </div>}
+  </div>;
+};
+
+const Sidebar = ({store,currentProp,setCurrent,activeKey,onNav,onAddProp,onExport}) => (
+  <aside style={{width:240,flexShrink:0,background:'var(--surface-0)',borderRight:'1px solid var(--line-1)',
+    display:'flex',flexDirection:'column',height:'100vh',position:'sticky',top:0,zIndex:20}}>
+    <div style={{padding:'20px 20px 18px',display:'flex',alignItems:'center',gap:10}}>
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#2A8B82"/>
+        <path d="M14 7L21 14L14 21L7 14Z" fill="#5EEAD4" opacity="0.9"/>
+        <path d="M14 10L18 14L14 18L10 14Z" fill="#081413" opacity="0.6"/>
+      </svg>
+      <span style={{fontFamily:'Instrument Serif,serif',fontSize:22,color:'var(--fg-1)',letterSpacing:'-0.01em'}}>HomeRun</span>
+    </div>
+    <PropSwitcher properties={store.properties} current={currentProp} onChange={setCurrent} onAdd={onAddProp}/>
+    <nav style={{flex:1,overflow:'auto',padding:'0 12px 16px'}}>
+      {NAV.map(grp=><div key={grp.label} style={{marginBottom:14}}>
+        <Eyebrow style={{padding:'8px 8px 6px'}}>{grp.label}</Eyebrow>
+        {grp.items.map(item=>{const active=item.key===activeKey;return(
+          <button key={item.key} onClick={()=>onNav(item.key)} style={{
+            width:'100%',display:'flex',alignItems:'center',gap:10,padding:'7px 10px',
+            borderRadius:'var(--r-1)',background:active?'var(--surface-2)':'transparent',
+            color:active?'var(--fg-1)':'var(--fg-2)',border:'none',textAlign:'left',cursor:'pointer',
+            fontFamily:'Geist,sans-serif',fontSize:13,fontWeight:active?500:400,
+            transition:'background 120ms',position:'relative'}}>
+            <i data-lucide={item.icon} style={{width:15,height:15}}/>
+            {item.label}
+            {active&&<span style={{position:'absolute',right:8,color:'var(--accent)',fontSize:10}}>◆</span>}
+          </button>);
+        })}
+      </div>)}
+    </nav>
+    <div style={{padding:12,borderTop:'1px solid var(--line-1)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'6px 8px'}}>
+        <div style={{width:30,height:30,borderRadius:'var(--r-pill)',background:'var(--teal-700)',
+          color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600}}>SH</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,color:'var(--fg-1)',fontWeight:500}}>Stephanie Hart</div>
+          <div style={{fontSize:11,color:'var(--fg-3)'}}>ISG LLC · {store.properties.length} properties</div>
+        </div>
+        <button onClick={onExport} title="Export data" style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--fg-3)',padding:4,borderRadius:'var(--r-1)'}}>
+          <i data-lucide="download" style={{width:14,height:14}}/>
+        </button>
+      </div>
+    </div>
+  </aside>
+);
+
+const TopBar = ({title,subtitle,primaryAction}) => (
+  <header style={{height:64,borderBottom:'1px solid var(--line-1)',background:'var(--bg-canvas)',
+    display:'flex',alignItems:'center',justifyContent:'space-between',
+    padding:'0 32px',position:'sticky',top:0,zIndex:10,flexShrink:0}}>
+    <div style={{display:'flex',alignItems:'baseline',gap:14,flex:1,minWidth:0,overflow:'hidden',whiteSpace:'nowrap'}}>
+      <h3 style={{fontSize:18,fontWeight:600,color:'var(--fg-1)',margin:0,whiteSpace:'nowrap'}}>{title}</h3>
+      {subtitle&&<><span style={{color:'var(--fg-4)'}}>·</span>
+        <span style={{fontSize:12,color:'var(--fg-3)',overflow:'hidden',textOverflow:'ellipsis'}}>{subtitle}</span></>}
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface-1)',border:'1px solid var(--line-1)',
+        borderRadius:'var(--r-1)',padding:'6px 12px',width:200,color:'var(--fg-3)',fontSize:13}}>
+        <i data-lucide="search" style={{width:13,height:13}}/>
+        <span style={{flex:1}}>Search</span>
+        <span className="mono" style={{fontSize:11,color:'var(--fg-4)'}}>⌘K</span>
+      </div>
+      {primaryAction}
+    </div>
+  </header>
+);
+
+// ── ALERTS DATA ───────────────────────────────────────────────────────────────
+const ALERTS_DATA = {
+  hammond:[
+    {tier:'critical',icon:'alert-octagon',title:'Hammond registration overdue',detail:'Fine up to $2,500/unit/day. File immediately.',action:'File now',meta:'City of Hammond · Due Apr 15'},
+    {tier:'critical',icon:'alert-octagon',title:'Unit 3 rent late — David Kim',detail:'$350 tenant share 10 days past due. HAP received in full.',action:'Pay or Quit',meta:'Unit 3 · 10 days late'},
+    {tier:'warning', icon:'wrench',       title:'Open repair — HVAC Unit 3',  detail:'High priority. No completion date recorded.',            action:'Assign vendor',meta:'Opened Apr 8'},
+    {tier:'info',    icon:'calendar-clock',title:'HVAC filters due this month',detail:'Quarterly replacement. ~$60 across all units.',          action:'Schedule',   meta:'Recurring · Q2'},
+  ],
+  gary:[
+    {tier:'warning',icon:'file-text',     title:'Lease renewal — Unit A',     detail:"Aliyah Brown's lease ends in 5 months.",action:'Send renewal',meta:'Unit A · Sep 30'},
+    {tier:'info',   icon:'calendar-clock',title:'Smoke alarm inspection due',  detail:'Annual battery + functionality check.',  action:'Log inspection',meta:'Annual · May'},
+  ],
+};
+
+// ── UNIT CARD ─────────────────────────────────────────────────────────────────
+const UnitCard = ({unit,onRecord,onAddTenant}) => {
+  const sc={occupied:'var(--safe-500)',late:'var(--out-500)',vacant:'var(--fg-4)'};
+  const sb={occupied:{label:'Occupied',tone:'safe'},late:{label:'Rent late',tone:'out'},vacant:{label:'Vacant',tone:'neutral'}}[unit.status];
+  const lb={'Section 8':{tone:'play'},'1-year':{tone:'brand'},'6-month':{tone:'info'},'Month-to-month':{tone:'neutral'}}[unit.lease]||{tone:'neutral'};
+  return <Card accent={sc[unit.status]} padding={0}>
+    <div style={{padding:'16px 20px 14px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:15,fontWeight:600,color:'var(--fg-1)'}}>{unit.label}</span>
+          {unit.lease&&<Badge tone={lb.tone}>{unit.lease}</Badge>}
+        </div>
+        {sb&&<Badge tone={sb.tone}>{sb.label}</Badge>}
+      </div>
+    </div>
+    <div style={{padding:'14px 20px 16px',borderTop:'1px solid var(--line-1)',display:'flex',flexDirection:'column',gap:10}}>
+      {unit.status==='vacant'?<>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+          <span style={{fontSize:13,color:'var(--fg-3)'}}>Asking rent</span>
+          <span className="mono" style={{fontSize:14,color:'var(--fg-1)'}}>{fmt(unit.rent)}/mo</span>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+          <span style={{fontSize:13,color:'var(--fg-3)'}}>Vacant since</span>
+          <span className="mono" style={{fontSize:13,color:'var(--fg-2)'}}>{unit.vacantSince}</span>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+          <span style={{fontSize:13,color:'var(--fg-3)'}}>Listed on</span>
+          <span style={{fontSize:13,color:'var(--fg-2)'}}>{unit.listedOn}</span>
+        </div>
+        <div style={{display:'flex',gap:8,marginTop:4}}>
+          <Btn variant="secondary" icon="user-plus" size="sm" onClick={()=>onAddTenant&&onAddTenant(unit)}>Add tenant</Btn>
+          <Btn variant="ghost" icon="megaphone" size="sm">Boost listing</Btn>
+        </div>
+      </>:<>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+          <span style={{fontSize:13,color:'var(--fg-3)'}}>Tenant</span>
+          <span style={{fontSize:14,color:'var(--fg-1)',fontWeight:500}}>{unit.tenant}</span>
+        </div>
+        {unit.lease==='Section 8'?<>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+            <span style={{fontSize:13,color:'var(--fg-3)'}}>HAP</span>
+            <span className="mono" style={{fontSize:13,color:'var(--safe-500)'}}>{fmt(unit.hapRent)} received</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+            <span style={{fontSize:13,color:'var(--fg-3)'}}>Tenant share</span>
+            <span className="mono" style={{fontSize:13,color:unit.status==='late'?'var(--out-500)':'var(--fg-1)'}}>
+              {fmt(unit.tenantShare)} {unit.status==='late'?`${unit.daysLate}d overdue`:'received'}
+            </span>
+          </div>
+        </>:<>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+            <span style={{fontSize:13,color:'var(--fg-3)'}}>Rent</span>
+            <span className="mono" style={{fontSize:14,color:'var(--fg-1)'}}>{fmt(unit.rent)}/mo</span>
+          </div>
+          {unit.leaseEnd&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+            <span style={{fontSize:13,color:'var(--fg-3)'}}>Lease end</span>
+            <span className="mono" style={{fontSize:13,color:'var(--fg-2)'}}>{unit.leaseEnd}</span>
+          </div>}
+        </>}
+        <div style={{display:'flex',gap:8,marginTop:4}}>
+          {unit.status==='late'?<>
+            <Btn variant="primary" icon="dollar-sign" size="sm" onClick={onRecord}>Record payment</Btn>
+            <Btn variant="danger" icon="file-warning" size="sm">Pay or Quit</Btn>
+          </>:<>
+            <Btn variant="secondary" icon="dollar-sign" size="sm" onClick={onRecord}>Record payment</Btn>
+            <Btn variant="ghost" icon="wrench" size="sm">Log repair</Btn>
+          </>}
+        </div>
+      </>}
+    </div>
+  </Card>;
+};
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+const Dashboard = ({store,propertyId,navigate,onAddTenant}) => {
+  const units=store.tenants.filter(u=>u.property===propertyId);
+  const payments=store.payments.filter(p=>p.property===propertyId);
+  const exps=store.expenses.filter(e=>e.property===propertyId);
+  const alerts=ALERTS_DATA[propertyId]||[];
+  const cgroups=store.compliance[propertyId]||[];
+  const cp=compProg(cgroups);
+  const rentRoll=units.filter(u=>u.status!=='vacant').reduce((a,u)=>a+(u.tenantShare||u.rent),0);
+  const totalExp=exps.filter(e=>e.status==='paid').reduce((a,e)=>a+e.amount,0);
+  const cf=rentRoll-totalExp;
+  const openR=store.repairs.filter(r=>r.property===propertyId&&r.status!=='completed').length;
+  const trend=[
+    {m:'Dec',i:3100,e:2400},{m:'Jan',i:3100,e:2700},{m:'Feb',i:2750,e:2300},
+    {m:'Mar',i:3200,e:2500},{m:'Apr',i:2850,e:2680},{m:'May',i:rentRoll,e:totalExp}
+  ];
+  const maxT=Math.max(...trend.flatMap(t=>[t.i,t.e]));
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Rent roll',value:fmt(rentRoll),tone:'safe'},
+      {label:'Expenses',value:fmt(totalExp),tone:'out'},
+      {label:'Cash flow',value:fmt(cf),tone:'safe',sub:'This month'},
+      {label:'Compliance',value:cp.pct+'%',tone:'play',sub:`${cp.done} of ${cp.total} complete`},
+      {label:'Open repairs',value:openR,sub:openR===0?'All clear':'Needs attention'},
+    ]}/>
+    <div>
+      <SHead title="Alerts this week" icon="bell" meta={`${alerts.length} open`}
+        action={<Btn variant="ghost" size="sm" icon="sliders-horizontal">Filter</Btn>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {alerts.map((a,i)=><AItem key={i} {...a}/>)}
+      </div>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:24}}>
+      <Card padding={0}>
+        <div style={{padding:'20px 24px 14px'}}>
+          <SHead title="Financial snapshot" icon="trending-up"
+            action={<Btn variant="ghost" size="sm" iconRight="arrow-right" onClick={()=>navigate('financials')}>Financials</Btn>}/>
+          <div style={{display:'flex',alignItems:'baseline',gap:16,marginTop:4}}>
+            <div style={{fontFamily:'Instrument Serif,serif',fontSize:52,lineHeight:1,letterSpacing:'-0.02em',color:'var(--fg-1)'}}>{fmt(cf)}</div>
+            <div>
+              <div style={{fontFamily:'Instrument Serif,serif',fontStyle:'italic',fontSize:20,color:'var(--fg-3)'}}>net this month</div>
+              <div className="meta" style={{marginTop:2}}>{cf>0?'+':''}{Math.round((cf/(rentRoll||1))*100)}% margin</div>
+            </div>
+          </div>
+        </div>
+        <div style={{padding:'8px 24px 12px',borderTop:'1px solid var(--line-1)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'12px 0 10px'}}>
+            <Eyebrow>6-month trend</Eyebrow>
+            <div style={{display:'flex',gap:14,fontSize:11,color:'var(--fg-2)'}}>
+              <span style={{display:'inline-flex',alignItems:'center',gap:5}}><Dia color="var(--safe-500)" size={7}/> Income</span>
+              <span style={{display:'inline-flex',alignItems:'center',gap:5}}><Dia color="var(--out-500)" size={7}/> Expense</span>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:14,alignItems:'end',height:120}}>
+            {trend.map((t,i)=><div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,height:'100%',justifyContent:'end'}}>
+              <div style={{display:'flex',alignItems:'end',gap:3,flex:1,width:'100%',justifyContent:'center'}}>
+                <div style={{width:14,height:`${t.i/maxT*100}%`,background:'var(--safe-500)',borderRadius:'2px 2px 0 0'}}/>
+                <div style={{width:14,height:`${t.e/maxT*100}%`,background:'var(--out-500)',borderRadius:'2px 2px 0 0',opacity:.9}}/>
+              </div>
+              <div style={{fontSize:11,color:'var(--fg-3)'}}>{t.m}</div>
+            </div>)}
+          </div>
+        </div>
+        <div style={{padding:'14px 24px',borderTop:'1px solid var(--line-1)',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
+          {[{k:'Collected',v:fmt(rentRoll),c:'var(--safe-500)'},{k:'Paid out',v:fmt(totalExp),c:'var(--out-500)'},{k:'YTD net',v:fmt(cf*5),c:'var(--fg-1)'}]
+            .map((s,i)=><div key={i} style={{borderLeft:i?'1px solid var(--line-1)':'none',paddingLeft:i?14:0}}>
+              <Eyebrow>{s.k}</Eyebrow>
+              <div className="mono" style={{fontSize:16,color:s.c,marginTop:4}}>{s.v}</div>
+            </div>)}
+        </div>
+      </Card>
+      <Card padding={0}>
+        <div style={{padding:'20px 24px 14px'}}>
+          <SHead title="Compliance" icon="shield"
+            action={<Btn variant="ghost" size="sm" iconRight="arrow-right" onClick={()=>navigate('local-laws')}>Open tracker</Btn>}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+            <div style={{fontSize:14,color:'var(--fg-1)'}}>
+              <span className="mono" style={{fontSize:16,fontWeight:500}}>{cp.done}</span>
+              <span style={{color:'var(--fg-3)'}}> of </span>
+              <span className="mono" style={{fontSize:16}}>{cp.total}</span>
+              <span style={{color:'var(--fg-3)'}}> complete</span>
+            </div>
+            <span className="mono" style={{fontSize:18,color:cp.pct<30?'var(--play-500)':'var(--safe-500)'}}>{cp.pct}%</span>
+          </div>
+          <div style={{marginTop:10}}><Prog value={cp.done} total={cp.total} height={6} color={cp.pct<30?'var(--play-500)':'var(--safe-500)'}/></div>
+        </div>
+        <div style={{borderTop:'1px solid var(--line-1)'}}>
+          {cgroups.map((g,gi)=>{const gp=grpProg(g);return(
+            <button key={gi} onClick={()=>navigate('local-laws')} style={{width:'100%',display:'flex',alignItems:'center',gap:12,
+              padding:'14px 24px',background:'transparent',border:'none',borderTop:gi?'1px solid var(--line-1)':'none',cursor:'pointer',textAlign:'left'}}>
+              <i data-lucide={g.icon} style={{width:15,height:15,color:'var(--fg-2)'}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                  <span style={{fontSize:13,color:'var(--fg-1)',fontWeight:500}}>{g.juris}</span>
+                  <span className="mono" style={{fontSize:11,color:'var(--fg-3)'}}>{gp.done}/{gp.total}</span>
+                </div>
+                <div style={{marginTop:7}}>
+                  <Prog value={gp.done} total={gp.total} height={3}
+                    color={gp.done===0?'var(--out-500)':gp.done===gp.total?'var(--safe-500)':'var(--play-500)'}/>
+                </div>
+              </div>
+            </button>);})}
+        </div>
+      </Card>
+    </div>
+    <div>
+      <SHead title="Units" icon="door-open" meta={`${units.length} units`}
+        action={<Btn variant="ghost" size="sm" iconRight="arrow-right" onClick={()=>navigate('units')}>All units</Btn>}/>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16}}>
+        {units.map(u=><UnitCard key={u.id} unit={u} onRecord={()=>navigate('payments')} onAddTenant={onAddTenant}/>)}
+      </div>
+    </div>
+  </div>;
+};
+
+// ── PORTFOLIO ─────────────────────────────────────────────────────────────────
+const Portfolio = ({store,navigate,setCurrentProp}) => {
+  const totalRent=store.properties.reduce((a,p)=>{
+    return a+store.tenants.filter(u=>u.property===p.id&&u.status!=='vacant').reduce((s,u)=>s+(u.tenantShare||u.rent),0);
+  },0);
+  const totalCF=store.properties.reduce((a,p)=>{
+    const r=store.tenants.filter(u=>u.property===p.id&&u.status!=='vacant').reduce((s,u)=>s+(u.tenantShare||u.rent),0);
+    const e=store.expenses.filter(x=>x.property===p.id&&x.status==='paid').reduce((s,x)=>s+x.amount,0);
+    return a+(r-e);
+  },0);
+  const avgComp=Math.round(store.properties.reduce((a,p)=>a+compProg(store.compliance[p.id]||[]).pct,0)/store.properties.length);
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Properties',value:store.properties.length},
+      {label:'Units',value:store.tenants.length,sub:`${store.tenants.filter(u=>u.status!=='vacant').length} occupied`},
+      {label:'Rent roll',value:fmt(totalRent),tone:'safe'},
+      {label:'Cash flow',value:fmt(totalCF),tone:'safe',sub:'May 2026'},
+      {label:'Compliance',value:avgComp+'%',tone:'play',sub:'Avg across props'},
+    ]}/>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16}}>
+      {store.properties.map(p=>{
+        const pu=store.tenants.filter(u=>u.property===p.id);
+        const r=pu.filter(u=>u.status!=='vacant').reduce((a,u)=>a+(u.tenantShare||u.rent),0);
+        const e=store.expenses.filter(x=>x.property===p.id&&x.status==='paid').reduce((a,x)=>a+x.amount,0);
+        const cp=compProg(store.compliance[p.id]||[]);
+        return <Card key={p.id} accent={p.dot} padding={0}>
+          <div style={{padding:'18px 22px',borderBottom:'1px solid var(--line-1)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+              <h4 style={{fontSize:17,fontWeight:600,margin:0,color:'var(--fg-1)'}}>{p.name}</h4>
+              <Btn variant="ghost" size="sm" iconRight="arrow-right" onClick={()=>{setCurrentProp(p.id);navigate('dashboard');}}>Open</Btn>
+            </div>
+            <div className="meta" style={{marginTop:4}}>{p.address}</div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)'}}>
+            {[{k:'Units',v:`${pu.filter(u=>u.status!=='vacant').length}/${pu.length}`},{k:'Cash flow',v:fmt(r-e),tone:'safe'},{k:'Compliance',v:cp.pct+'%',tone:cp.pct<30?'play':'safe'}]
+              .map((s,i)=><div key={i} style={{padding:18,borderLeft:i?'1px solid var(--line-1)':'none'}}>
+                <Eyebrow>{s.k}</Eyebrow>
+                <div className="mono" style={{fontSize:18,marginTop:4,color:s.tone?`var(--${s.tone}-500)`:'var(--fg-1)'}}>{s.v}</div>
+              </div>)}
+          </div>
+        </Card>;
+      })}
+    </div>
+  </div>;
+};
+
+// ── UNITS ─────────────────────────────────────────────────────────────────────
+const UnitsView = ({store,propertyId,navigate,onAddTenant}) => {
+  const units=store.tenants.filter(u=>u.property===propertyId);
+  const occ=units.filter(u=>u.status!=='vacant').length;
+  const late=units.filter(u=>u.status==='late').length;
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Units',value:units.length,mono:true},
+      {label:'Occupied',value:`${occ}/${units.length}`,tone:'safe',sub:`${Math.round(occ/units.length*100)}% occupancy`},
+      {label:'Late',value:late,tone:late?'out':null,sub:late?`${fmt(units.filter(u=>u.status==='late').reduce((a,u)=>a+(u.tenantShare||u.rent),0))} owed`:'All current'},
+      {label:'Vacant',value:units.filter(u=>u.status==='vacant').length,tone:'play',sub:'Listed actively'},
+    ]}/>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16}}>
+      {units.map(u=><UnitCard key={u.id} unit={u} onRecord={()=>navigate('payments')} onAddTenant={onAddTenant}/>)}
+    </div>
+  </div>;
+};
+
+// ── TENANTS ───────────────────────────────────────────────────────────────────
+const Tenants = ({store,propertyId,onAddTenant,onAddUnit}) => {
+  const ten=store.tenants.filter(u=>u.property===propertyId&&u.tenant);
+  return <div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:980}}>
+    <SHead title="Tenants" icon="users" meta={`${ten.length} active`}
+      action={<div style={{display:'flex',gap:8}}>
+        <Btn variant="outline" icon="door-open" onClick={onAddUnit}>Add unit</Btn>
+        <Btn variant="primary" icon="user-plus" onClick={()=>onAddTenant&&onAddTenant(null)}>Add tenant</Btn>
+      </div>}/>
+    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {ten.map(u=><LRow key={u.id}
+        primary={u.tenant}
+        secondary={`${u.label} · Lease ends ${u.leaseEnd||'—'} · Moved in ${u.moveIn}`}
+        badges={<Badge tone={u.lease==='Section 8'?'play':'brand'}>{u.lease}</Badge>}
+        right={fmt(u.rent)+'/mo'}
+        status={u.status==='late'?'Late':'Current'}
+        statusTone={u.status==='late'?'out':'safe'}/>)}
+    </div>
+  </div>;
+};
+
+// ── PAYMENTS ──────────────────────────────────────────────────────────────────
+const Payments = ({store,propertyId,openRecord}) => {
+  const [uFilter,setU]=useState('');
+  const [sFilter,setS]=useState('');
+  const all=store.payments.filter(p=>p.property===propertyId);
+  const filtered=all.filter(p=>(!uFilter||p.unit===uFilter)&&(!sFilter||p.status===sFilter));
+  const totals=filtered.reduce((a,p)=>{if(p.status==='paid')a.recv+=p.amount;else if(p.status==='late')a.out+=p.amount;return a;},{recv:0,out:0});
+  const uNames=[...new Set(all.map(p=>p.unit))];
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Received',value:fmt(totals.recv),tone:'safe',sub:`${filtered.filter(f=>f.status==='paid').length} payments`},
+      {label:'Outstanding',value:fmt(totals.out),tone:totals.out?'out':null,sub:totals.out?'1 unit late':'All current'},
+      {label:'Avg. method',value:'Bank transfer',mono:false,sub:'Most common'},
+      {label:'HAP share',value:fmt(filtered.filter(f=>f.source==='HAP'&&f.status==='paid').reduce((a,p)=>a+p.amount,0)),tone:'play',sub:'From housing auth.'},
+    ]}/>
+    <div>
+      <SHead title="Payments" icon="wallet-minimal" meta={`${filtered.length} of ${all.length}`}
+        action={<div style={{display:'flex',gap:8}}>
+          <Sel value={uFilter} onChange={setU} placeholder="All units" options={uNames.map(u=>({value:u,label:u}))} style={{width:130}}/>
+          <Sel value={sFilter} onChange={setS} placeholder="All statuses" options={[{value:'paid',label:'Paid'},{value:'late',label:'Late'}]} style={{width:130}}/>
+          <Btn variant="primary" icon="plus" onClick={openRecord}>Record payment</Btn>
+        </div>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {filtered.map(p=><LRow key={p.id}
+          primary={p.tenant} secondary={`${p.unit} · ${p.period} · ${p.method}`}
+          badges={<Badge tone={p.source==='HAP'?'play':'neutral'}>{p.source}</Badge>}
+          right={fmt(p.amount)}
+          status={p.status==='paid'?'Paid':p.status==='late'?'Late':'Pending'}
+          statusTone={p.status==='paid'?'safe':p.status==='late'?'out':'play'}
+          rightSub={`· ${p.date}`}/>)}
+      </div>
+    </div>
+  </div>;
+};
+
+// ── EXPENSES ──────────────────────────────────────────────────────────────────
+const Expenses = ({store,propertyId}) => {
+  const [cat,setCat]=useState('');
+  const all=store.expenses.filter(e=>e.property===propertyId);
+  const cats=[...new Set(all.map(e=>e.cat))];
+  const filtered=all.filter(e=>!cat||e.cat===cat);
+  const total=filtered.reduce((a,e)=>a+e.amount,0);
+  const paid=filtered.filter(e=>e.status==='paid').reduce((a,e)=>a+e.amount,0);
+  const byCat=cats.map(c=>({cat:c,total:all.filter(e=>e.cat===c).reduce((a,e)=>a+e.amount,0)})).sort((a,b)=>b.total-a.total);
+  const chip=(active)=>({background:active?'var(--surface-2)':'transparent',border:`1px solid ${active?'var(--line-2)':'var(--line-1)'}`,
+    color:active?'var(--fg-1)':'var(--fg-2)',padding:'6px 12px',borderRadius:'var(--r-pill)',fontSize:12,cursor:'pointer',fontFamily:'Geist,sans-serif',fontWeight:500});
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Total expenses',value:fmt(total),tone:'out'},
+      {label:'Paid',value:fmt(paid),sub:`${filtered.filter(e=>e.status==='paid').length} txns`},
+      {label:'Pending',value:fmt(total-paid),tone:total-paid?'play':null,sub:filtered.filter(e=>e.status!=='paid').length+' txns'},
+      {label:'Biggest',value:byCat[0]?.cat||'—',mono:false,sub:byCat[0]?fmt(byCat[0].total):''},
+    ]}/>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      <button onClick={()=>setCat('')} style={chip(cat==='')}>All <span className="mono" style={{marginLeft:6,color:'var(--fg-3)'}}>{all.length}</span></button>
+      {byCat.map(c=><button key={c.cat} onClick={()=>setCat(c.cat)} style={chip(cat===c.cat)}>
+        {c.cat} <span className="mono" style={{marginLeft:6,color:'var(--fg-3)'}}>{fmt(c.total)}</span>
+      </button>)}
+    </div>
+    <div>
+      <SHead title="Expenses" icon="receipt" meta={`${filtered.length} txns`}
+        action={<Btn variant="primary" icon="plus">Add expense</Btn>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {filtered.map(e=><LRow key={e.id}
+          primary={e.desc} secondary={`${e.vendor} · ${e.unit} · ${e.method}`}
+          badges={<Badge tone={e.cat==='Repairs'?'out':e.cat==='Utilities'?'info':e.cat==='Mortgage'?'neutral':e.cat==='Insurance'?'play':'brand'}>{e.cat}</Badge>}
+          right={`−${fmt(e.amount)}`}
+          status={e.status==='paid'?'Paid':'Pending'} statusTone={e.status==='paid'?'safe':'play'}
+          rightSub={`· ${e.date}`}/>)}
+      </div>
+    </div>
+  </div>;
+};
+
+// ── FINANCIALS ────────────────────────────────────────────────────────────────
+const Financials = ({store,propertyId}) => {
+  const pmts=store.payments.filter(p=>p.property===propertyId);
+  const exps=store.expenses.filter(e=>e.property===propertyId);
+  const totalIn=pmts.reduce((a,p)=>a+(p.status==='paid'?p.amount:0),0);
+  const totalOut=exps.reduce((a,e)=>a+(e.status==='paid'?e.amount:0),0);
+  const net=totalIn-totalOut;
+  const byCat={};
+  exps.forEach(e=>{if(e.status==='paid')byCat[e.cat]=(byCat[e.cat]||0)+e.amount;});
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const pL={padding:'11px 24px',fontSize:13,color:'var(--fg-2)'};
+  const pA={padding:'11px 24px',fontFamily:'Geist Mono,monospace',fontSize:13,color:'var(--fg-1)',textAlign:'right'};
+  return <div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:880}}>
+    <Card padding={28}>
+      <Eyebrow>Profit & loss · 2026 YTD</Eyebrow>
+      <div style={{marginTop:12,display:'flex',alignItems:'baseline',gap:14}}>
+        <span style={{fontFamily:'Instrument Serif,serif',fontSize:64,lineHeight:1,color:'var(--fg-1)'}}>{fmt(net)}</span>
+        <span style={{fontFamily:'Instrument Serif,serif',fontStyle:'italic',fontSize:24,color:'var(--fg-3)'}}>net</span>
+      </div>
+      <div className="meta" style={{marginTop:8}}>Cash basis · May 12, 2026</div>
+    </Card>
+    <Card padding={0}>
+      <table style={{width:'100%',borderCollapse:'collapse',fontVariantNumeric:'tabular-nums'}}>
+        <tbody>
+          <tr style={{background:'var(--surface-0)'}}>
+            <td style={{padding:'10px 24px',fontSize:11,color:'var(--fg-3)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Income</td><td/>
+          </tr>
+          <tr style={{borderTop:'1px solid var(--line-1)'}}><td style={pL}>Rent collected</td><td style={pA}>{fmt(pmts.filter(p=>p.source==='Tenant'&&p.status==='paid').reduce((a,p)=>a+p.amount,0))}</td></tr>
+          <tr style={{borderTop:'1px solid var(--line-1)'}}><td style={pL}>HAP / Section 8</td><td style={pA}>{fmt(pmts.filter(p=>p.source==='HAP'&&p.status==='paid').reduce((a,p)=>a+p.amount,0))}</td></tr>
+          <tr style={{borderTop:'1px solid var(--line-1)'}}><td style={{...pL,fontWeight:500,color:'var(--fg-1)'}}>Total income</td><td style={{...pA,color:'var(--safe-500)',fontWeight:500}}>{fmt(totalIn)}</td></tr>
+          <tr style={{background:'var(--surface-0)'}}><td style={{padding:'10px 24px',fontSize:11,color:'var(--fg-3)',textTransform:'uppercase',letterSpacing:'0.08em',borderTop:'1px solid var(--line-1)'}}>Expenses</td><td style={{borderTop:'1px solid var(--line-1)'}}/></tr>
+          {catRows.map(([c,v])=><tr key={c} style={{borderTop:'1px solid var(--line-1)'}}><td style={pL}>{c}</td><td style={pA}>−{fmt(v)}</td></tr>)}
+          <tr style={{borderTop:'1px solid var(--line-1)'}}><td style={{...pL,fontWeight:500,color:'var(--fg-1)'}}>Total expenses</td><td style={{...pA,color:'var(--out-500)',fontWeight:500}}>−{fmt(totalOut)}</td></tr>
+          <tr style={{borderTop:'1px solid var(--line-2)',background:'var(--surface-0)'}}>
+            <td style={{...pL,fontSize:14,color:'var(--fg-1)',fontWeight:600,fontFamily:'Instrument Serif,serif',fontStyle:'italic'}}>Net cash flow</td>
+            <td style={{...pA,fontSize:18,fontWeight:500,color:net>=0?'var(--safe-500)':'var(--out-500)'}}>{fmtSigned(net)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{padding:16,borderTop:'1px solid var(--line-1)',display:'flex',justifyContent:'flex-end',gap:8}}>
+        <Btn variant="outline" icon="download">CSV</Btn>
+        <Btn variant="outline" icon="download">PDF</Btn>
+      </div>
+    </Card>
+  </div>;
+};
+
+// ── REPAIRS ───────────────────────────────────────────────────────────────────
+const Repairs = ({store,propertyId}) => {
+  const reps=store.repairs.filter(r=>r.property===propertyId);
+  const cnt={open:reps.filter(r=>r.status==='open').length,ip:reps.filter(r=>r.status==='in-progress').length,done:reps.filter(r=>r.status==='completed').length};
+  const pt={high:'out',normal:'play',low:'neutral'};
+  const sl={'open':'Open','in-progress':'In progress','completed':'Completed'};
+  const st={'open':'out','in-progress':'play','completed':'safe'};
+  const spent=store.expenses.filter(e=>e.property===propertyId&&e.cat==='Repairs').reduce((a,e)=>a+e.amount,0);
+  return <div style={{display:'flex',flexDirection:'column',gap:24}}>
+    <MetricStrip items={[
+      {label:'Open',value:cnt.open,tone:cnt.open?'out':null},
+      {label:'In progress',value:cnt.ip,tone:'play'},
+      {label:'Completed',value:cnt.done,tone:'safe'},
+      {label:'Spent YTD',value:fmt(spent),tone:'out'},
+    ]}/>
+    <div>
+      <SHead title="Repair tickets" icon="wrench" action={<Btn variant="primary" icon="plus">New ticket</Btn>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {reps.map(r=><LRow key={r.id}
+          primary={r.title} secondary={`${r.unit} · Opened ${r.opened} · ${r.vendor||'No vendor assigned'}`}
+          badges={<Badge tone={pt[r.priority]}>{r.priority}</Badge>}
+          right={r.notes||'—'} status={sl[r.status]} statusTone={st[r.status]}/>)}
+      </div>
+    </div>
+  </div>;
+};
+
+// ── SCHEDULE ──────────────────────────────────────────────────────────────────
+const Schedule = ({store}) => {
+  const tc={critical:'var(--out-500)',warning:'var(--play-500)',info:'var(--teal-300)'};
+  return <div style={{display:'flex',flexDirection:'column',gap:18,maxWidth:720}}>
+    <SHead title="Upcoming" icon="calendar" meta="Next 30 days" action={<Btn variant="outline" icon="plus">Add event</Btn>}/>
+    <Card padding={0}>
+      {store.schedTasks.map((e,i)=><div key={e.id} style={{display:'grid',gridTemplateColumns:'80px 1fr auto',gap:16,alignItems:'center',
+        padding:'14px 20px',borderTop:i?'1px solid var(--line-1)':'none'}}>
+        <div className="mono" style={{fontSize:13,color:'var(--fg-2)'}}>{e.date.slice(5)}</div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Dia color={tc[e.tone]} size={8}/>
+          <span style={{fontSize:14,color:'var(--fg-1)'}}>{e.label}</span>
+        </div>
+        <Badge tone={e.tag==='compliance'?'play':e.tag==='rent'?'safe':e.tag==='repair'?'out':'brand'}>{e.tag}</Badge>
+      </div>)}
+    </Card>
+  </div>;
+};
+
+// ── COMPLIANCE ────────────────────────────────────────────────────────────────
+const ComplianceView = ({store,propertyId,dispatch}) => {
+  const groups=store.compliance[propertyId]||[];
+  const cp=compProg(groups);
+  const prop=store.properties.find(p=>p.id===propertyId);
+  return <div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:980}}>
+    <Card padding={28}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:24,marginBottom:14}}>
+        <div style={{minWidth:0}}>
+          <Eyebrow>Compliance · {prop?.name}</Eyebrow>
+          <div style={{marginTop:8,fontFamily:'Instrument Serif,serif',fontSize:44,lineHeight:1.05,color:'var(--fg-1)'}}>
+            {cp.done}<span style={{fontStyle:'italic',fontSize:22,color:'var(--fg-3)',marginLeft:10}}>of {cp.total} complete</span>
+          </div>
+          <div className="meta" style={{marginTop:8}}>Across {groups.length} jurisdictions</div>
+        </div>
+        <span className="mono" style={{fontSize:36,color:cp.pct<30?'var(--play-500)':'var(--safe-500)',fontWeight:500}}>{cp.pct}%</span>
+      </div>
+      <Prog value={cp.done} total={cp.total} height={8} color={cp.pct<30?'var(--play-500)':'var(--safe-500)'}/>
+    </Card>
+    {groups.map((g,gi)=>{const gp=grpProg(g);return <div key={gi}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+        <i data-lucide={g.icon} style={{width:17,height:17,color:'var(--fg-2)'}}/>
+        <h4 style={{fontSize:16,fontWeight:600,margin:0,color:'var(--fg-1)'}}>{g.juris}</h4>
+        <Badge tone={gp.done===gp.total&&gp.total>0?'safe':gp.done===0?'out':'play'}>{gp.done}/{gp.total}</Badge>
+        <div style={{flex:1,marginLeft:12,maxWidth:220}}>
+          <Prog value={gp.done} total={gp.total} height={4} color={gp.done===0?'var(--out-500)':gp.done===gp.total?'var(--safe-500)':'var(--play-500)'}/>
+        </div>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {g.items.map((it,ii)=>{
+          const sc=it.severity==='critical'?'var(--out-500)':it.severity==='warning'?'var(--play-500)':null;
+          return <div key={ii} style={{display:'grid',gridTemplateColumns:'24px 1fr',gap:14,
+            background:'var(--surface-1)',border:'1px solid var(--line-1)',
+            borderLeft:sc&&!it.done?`3px solid ${sc}`:'1px solid var(--line-1)',
+            borderRadius:'var(--r-2)',padding:'14px 18px',opacity:it.done?0.6:1,transition:'opacity 200ms'}}>
+            <Chk checked={it.done} onChange={()=>dispatch({type:'TOGGLE_COMP',propertyId,gi,ii})}/>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:600,color:'var(--fg-1)',textDecoration:it.done?'line-through':'none'}}>{it.title}</div>
+              {it.desc&&<div style={{fontSize:13,color:'var(--fg-2)',marginTop:5,lineHeight:1.45}}>{it.desc}</div>}
+              <div style={{display:'flex',alignItems:'center',gap:10,marginTop:9,flexWrap:'wrap'}}>
+                <Badge tone={/Federal/.test(g.juris)?'info':/Indiana/.test(g.juris)?'brand':'play'}>{g.juris}</Badge>
+                {it.fed&&<Badge tone="info" subtle>Federal</Badge>}
+                <span style={{fontSize:11,color:'var(--fg-3)',letterSpacing:'0.04em',textTransform:'uppercase'}}>{it.due}</span>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>;})}
+  </div>;
+};
+
+// ── SECTION 8 ─────────────────────────────────────────────────────────────────
+const S8C={'h-3':{pha:'Lake County Housing Authority',caseworker:'Renee Holcomb',voucherSize:'2-bedroom',
+  contractEnd:'2026-04-30',hqsNext:'2026-04-22',hqsStatus:'pass',annualRecert:'2026-04-15'}};
+const S8R=[
+  {title:'Annual HQS inspection',desc:'Housing Quality Standards inspection by the PHA. Schedule before contract anniversary.',cadence:'Annual',icon:'clipboard-check',tone:'critical',dueIn:'14 days'},
+  {title:'Annual tenant recertification',desc:'PHA recertifies tenant income and family composition.',cadence:'Annual',icon:'user-check',tone:'warning',dueIn:'14 days'},
+  {title:'Lead-Based Paint Disclosure',desc:'Required for pre-1978 buildings before each lease + HAP contract execution.',cadence:'Per lease',icon:'shield-alert',tone:'warning',dueIn:'Next lease'},
+  {title:'Rent reasonableness review',desc:'PHA verifies contract rent is comparable to market.',cadence:'Per increase',icon:'scale',tone:'info',dueIn:'On request'},
+  {title:'Tenancy Addendum (HUD-52641-A)',desc:'Federally-required addendum attached to every HAP-assisted lease.',cadence:'Per lease',icon:'file-text',tone:'info',dueIn:'On file'},
+  {title:'HAP contract execution',desc:'Executed between owner and PHA. Renewed annually with the lease.',cadence:'Per contract',icon:'handshake',tone:'info',dueIn:'Renewed annually'},
+];
+const Section8View = ({store,propertyId,navigate}) => {
+  const units=store.tenants.filter(u=>u.property===propertyId&&u.lease==='Section 8');
+  if(!units.length)return <div style={{maxWidth:720}}>
+    <Card padding={36} style={{textAlign:'center'}}>
+      <div style={{display:'inline-flex',width:52,height:52,borderRadius:'var(--r-pill)',background:'var(--play-tint)',alignItems:'center',justifyContent:'center',marginBottom:16}}>
+        <i data-lucide="key-round" style={{width:24,height:24,color:'var(--play-500)'}}/>
+      </div>
+      <h3 style={{fontFamily:'Instrument Serif,serif',fontSize:28,fontWeight:400,margin:0}}>No Section 8 units yet.</h3>
+      <p style={{fontSize:14,color:'var(--fg-2)',marginTop:8,lineHeight:1.5,maxWidth:460,marginInline:'auto'}}>
+        Section 8 (Housing Choice Voucher) lets tenants pay a portion of rent while the local housing authority covers the rest.
+      </p>
+      <div style={{marginTop:22,display:'flex',gap:8,justifyContent:'center'}}>
+        <Btn variant="primary" icon="plus">Enroll a unit</Btn>
+        <Btn variant="ghost" icon="external-link">PHA directory</Btn>
+      </div>
+    </Card>
+  </div>;
+  const totalHap=units.reduce((a,u)=>a+(u.hapRent||0),0);
+  const totalShare=units.reduce((a,u)=>a+(u.tenantShare||0),0);
+  return <div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:1080}}>
+    <MetricStrip items={[
+      {label:'Enrolled units',value:`${units.length} of ${store.tenants.filter(u=>u.property===propertyId).length}`},
+      {label:'HAP / month',value:fmt(totalHap),tone:'safe'},
+      {label:'Tenant share',value:fmt(totalShare),sub:'Per month, combined'},
+      {label:'Next recert',value:'Apr 15',tone:'play',sub:'Unit 3 · in 14 days'},
+      {label:'HQS status',value:'Passed',tone:'safe',sub:'Last inspected Apr 22'},
+    ]}/>
+    <div>
+      <SHead title="HAP contracts" icon="key-round" meta={`${units.length} active`}
+        action={<Btn variant="outline" icon="download">Export packet</Btn>}/>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {units.map(u=>{const c=S8C[u.id]||{};return <Card key={u.id} padding={0} accent="var(--play-500)">
+          <div style={{padding:'16px 22px 12px',display:'flex',justifyContent:'space-between',alignItems:'baseline',borderBottom:'1px solid var(--line-1)'}}>
+            <div style={{display:'flex',alignItems:'baseline',gap:10}}>
+              <span style={{fontSize:16,fontWeight:600,color:'var(--fg-1)'}}>{u.label}</span>
+              <span style={{fontSize:14,color:'var(--fg-2)'}}>{u.tenant}</span>
+              <Badge tone="play">Section 8</Badge>
+              <Badge tone={c.hqsStatus==='pass'?'safe':'out'} subtle>HQS {c.hqsStatus||'pending'}</Badge>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <Btn variant="ghost" size="sm" icon="clipboard-check">Log inspection</Btn>
+              <Btn variant="ghost" size="sm" icon="file-text" onClick={()=>navigate('documents')}>RTA packet</Btn>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)'}}>
+            {[{k:'PHA',v:c.pha||'—',m:false},{k:'Voucher',v:c.voucherSize||'—',m:false},{k:'Contract end',v:c.contractEnd||'—'},
+              {k:'HAP',v:fmt(u.hapRent||0),tone:'safe'},{k:'Tenant share',v:fmt(u.tenantShare||0),tone:u.status==='late'?'out':null}]
+              .map((s,i)=><div key={i} style={{padding:'14px 18px',borderLeft:i?'1px solid var(--line-1)':'none',minWidth:0}}>
+                <Eyebrow>{s.k}</Eyebrow>
+                <div className={s.m===false?'':'mono'} style={{fontSize:13,marginTop:5,color:s.tone?`var(--${s.tone}-500)`:'var(--fg-1)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.v}</div>
+              </div>)}
+          </div>
+          {c.caseworker&&<div style={{padding:'12px 22px',borderTop:'1px solid var(--line-1)',background:'var(--surface-0)',display:'flex',alignItems:'center',gap:10,fontSize:12,color:'var(--fg-2)'}}>
+            <i data-lucide="user" style={{width:13,height:13,color:'var(--fg-3)'}}/>
+            Caseworker: <span style={{color:'var(--fg-1)'}}>{c.caseworker}</span>
+            <span style={{color:'var(--fg-4)'}}>·</span>
+            Next recert <span className="mono" style={{color:'var(--play-500)'}}>{c.annualRecert}</span>
+            <span style={{color:'var(--fg-4)'}}>·</span>
+            Annual HQS <span className="mono" style={{color:'var(--fg-1)'}}>{c.hqsNext}</span>
+          </div>}
+        </Card>;})}
+      </div>
+    </div>
+    <div>
+      <SHead title="Program requirements" icon="shield" meta="Federal Section 8 / HCV"
+        action={<Btn variant="ghost" size="sm" iconRight="arrow-right" onClick={()=>navigate('local-laws')}>Full compliance</Btn>}/>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
+        {S8R.map((r,i)=>{const ac=r.tone==='critical'?'var(--out-500)':r.tone==='warning'?'var(--play-500)':'var(--teal-500)';return(
+          <div key={i} style={{display:'grid',gridTemplateColumns:'28px 1fr',gap:12,alignItems:'start',
+            background:'var(--surface-1)',border:'1px solid var(--line-1)',borderLeft:`3px solid ${ac}`,borderRadius:'var(--r-2)',padding:'14px 16px'}}>
+            <i data-lucide={r.icon} style={{width:16,height:16,color:ac,marginTop:2}}/>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--fg-1)'}}>{r.title}</div>
+              <div style={{fontSize:12,color:'var(--fg-2)',marginTop:4,lineHeight:1.4}}>{r.desc}</div>
+              <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8}}>
+                <Badge tone="neutral" subtle>{r.cadence}</Badge>
+                <span style={{fontSize:11,color:'var(--fg-3)',letterSpacing:'0.04em',textTransform:'uppercase'}}>Due {r.dueIn}</span>
+              </div>
+            </div>
+          </div>);})}
+      </div>
+    </div>
+  </div>;
+};
+
+// ── DOCUMENTS ─────────────────────────────────────────────────────────────────
+const DOCS=[
+  {id:'pay-quit',   name:'Pay or Quit notice',   meta:'10-day notice. Indiana law.',   badge:'Required',   tone:'out',   icon:'file-warning'},
+  {id:'lead-paint', name:'Lead paint disclosure', meta:'Pre-1978 · Federal law.',       badge:'Required',   tone:'out',   icon:'shield-alert'},
+  {id:'lease',      name:'Lease agreement',       meta:'Indiana-compliant. S8 ready.',  badge:'Indiana law',tone:'brand', icon:'file-text'},
+  {id:'hap-rta',    name:'HAP / RTA packet',      meta:'Full S8 enrollment packet.',    badge:'Section 8',  tone:'play',  icon:'key-round'},
+  {id:'move-in',    name:'Move-in inspection',    meta:'Adaptive by program type.',     badge:'All types',  tone:'brand', icon:'clipboard-check'},
+  {id:'rent-receipt',name:'Rent receipt',         meta:'For tenants who request.',      badge:'On request', tone:'neutral',icon:'receipt'},
+];
+const dH={textAlign:'center',fontFamily:'Geist,sans-serif',fontWeight:700,fontSize:18,letterSpacing:'0.04em',color:'#1a1a1a',marginBottom:4};
+const dS={textAlign:'center',fontFamily:'Instrument Serif,serif',fontStyle:'italic',fontSize:14,color:'#555',marginBottom:28};
+const d3={fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#1a1a1a',marginBottom:8,paddingBottom:6,borderBottom:'1px solid #999'};
+const dKV={display:'flex',gap:8,marginBottom:6,fontSize:13,color:'#1a1a1a'};
+const dK={fontWeight:600,minWidth:160};
+const dHi={color:'#1F3C39',fontWeight:600};
+const sR={display:'grid',gridTemplateColumns:'1fr 1fr',gap:28,marginTop:32};
+const sB={borderTop:'1px solid #1a1a1a',paddingTop:6,fontSize:11,color:'#555'};
+
+const DocContent = ({docId,unit,prop}) => {
+  if(docId==='lead-paint')return <>
+    <div style={dH}>DISCLOSURE OF INFORMATION ON LEAD-BASED PAINT</div>
+    <div style={dS}>Title X, Section 1018 · 42 U.S.C. § 4852(d)</div>
+    <div style={{marginBottom:22}}><div style={d3}>Property information</div>
+      <div style={dKV}><span style={dK}>Property address:</span><span style={dHi}>{prop?.address} · {unit?.label}</span></div>
+      <div style={dKV}><span style={dK}>Year of construction:</span><span style={dHi}>{prop?.yearBuilt} (pre-1978 — this disclosure is required)</span></div>
+    </div>
+    <div style={{marginBottom:22}}><div style={d3}>Landlord's disclosure</div>
+      <div style={{fontSize:13,marginBottom:6}}>☐ Known lead-based paint hazards are present. Explanation: _________________________</div>
+      <div style={{fontSize:13}}>☐ Landlord has no knowledge of lead-based paint hazards in the housing.</div>
+    </div>
+    <div style={sR}><div style={sB}>Landlord signature & date</div><div style={sB}>Tenant: {unit?.tenant}</div></div>
+  </>;
+  if(docId==='pay-quit')return <>
+    <div style={dH}>NOTICE TO PAY RENT OR QUIT</div>
+    <div style={dS}>Indiana Code 32-31-1-6 · Ten-day notice</div>
+    <div style={dKV}><span style={dK}>To:</span><span style={dHi}>{unit?.tenant}</span></div>
+    <div style={dKV}><span style={dK}>Premises:</span><span>{prop?.address} · {unit?.label}</span></div>
+    <div style={dKV}><span style={dK}>Amount due:</span><span style={{...dHi,color:'#E07A5F'}}>${unit?.tenantShare||unit?.rent}</span></div>
+    <div style={dKV}><span style={dK}>Period:</span><span>April 2026 rent ({unit?.lease==='Section 8'?'tenant share':'full'})</span></div>
+    <p style={{fontSize:13,lineHeight:1.55,marginTop:16}}>You are hereby notified that rent is past due and unpaid on the above-described premises. You are required to pay the same in full within <strong>ten (10) days</strong> from service of this notice, or to surrender possession of the premises.</p>
+    <div style={sR}><div style={sB}>Landlord signature & date</div><div style={sB}>Served on (date / method)</div></div>
+  </>;
+  if(docId==='lease')return <>
+    <div style={dH}>RESIDENTIAL LEASE AGREEMENT</div><div style={dS}>State of Indiana</div>
+    <div style={{marginBottom:22}}><div style={d3}>Parties & premises</div>
+      <div style={dKV}><span style={dK}>Landlord:</span><span>Stephanie Hart / ISG LLC</span></div>
+      <div style={dKV}><span style={dK}>Tenant(s):</span><span style={dHi}>{unit?.tenant||'________________'}</span></div>
+      <div style={dKV}><span style={dK}>Premises:</span><span style={dHi}>{prop?.address} · {unit?.label}</span></div>
+    </div>
+    <div style={{marginBottom:22}}><div style={d3}>Term & rent</div>
+      <div style={dKV}><span style={dK}>Lease type:</span><span>{unit?.lease||'1-year'}</span></div>
+      <div style={dKV}><span style={dK}>Monthly rent:</span><span style={dHi}>${unit?.rent}.00</span></div>
+      <div style={dKV}><span style={dK}>Due:</span><span>1st of each month</span></div>
+      <div style={dKV}><span style={dK}>Security deposit:</span><span>${unit?.rent}.00</span></div>
+    </div>
+    <div style={sR}><div style={sB}>Landlord signature & date</div><div style={sB}>Tenant signature & date</div></div>
+  </>;
+  if(docId==='hap-rta')return <>
+    <div style={dH}>REQUEST FOR TENANCY APPROVAL (RTA)</div><div style={dS}>HUD-52517 · Section 8 Housing Choice Voucher</div>
+    <div style={dKV}><span style={dK}>PHA:</span><span>Lake County Housing Authority</span></div>
+    <div style={dKV}><span style={dK}>Owner:</span><span>Stephanie Hart / ISG LLC</span></div>
+    <div style={dKV}><span style={dK}>Family:</span><span style={dHi}>{unit?.tenant}</span></div>
+    <div style={dKV}><span style={dK}>Unit:</span><span>{prop?.address} · {unit?.label}</span></div>
+    <div style={dKV}><span style={dK}>Contract rent:</span><span style={dHi}>${unit?.rent}.00 / mo</span></div>
+    <div style={dKV}><span style={dK}>Estimated HAP:</span><span>${unit?.hapRent||700}.00 / mo</span></div>
+    <div style={dKV}><span style={dK}>Tenant share:</span><span>${unit?.tenantShare||350}.00 / mo</span></div>
+    <div style={sR}><div style={sB}>Owner certification</div><div style={sB}>Tenant certification</div></div>
+  </>;
+  if(docId==='move-in')return <>
+    <div style={dH}>MOVE-IN INSPECTION CHECKLIST</div><div style={dS}>{prop?.address} · {unit?.label}</div>
+    <table style={{width:'100%',fontSize:13,borderCollapse:'collapse'}}><thead><tr style={{borderBottom:'1px solid #999'}}>
+      <th style={{textAlign:'left',padding:'6px 0',fontSize:11,letterSpacing:'0.06em',textTransform:'uppercase'}}>Area</th>
+      <th style={{textAlign:'left',padding:'6px 8px',fontSize:11,letterSpacing:'0.06em',textTransform:'uppercase'}}>Move-in</th>
+      <th style={{textAlign:'left',padding:'6px 8px',fontSize:11,letterSpacing:'0.06em',textTransform:'uppercase'}}>Notes</th>
+    </tr></thead><tbody>
+      {['Living room','Kitchen','Bathroom','Bedroom 1','Bedroom 2','Appliances','Floors','Walls','Windows','Smoke alarms'].map(a=><tr key={a} style={{borderBottom:'1px dashed #ccc'}}>
+        <td style={{padding:'8px 0'}}>{a}</td><td style={{padding:'8px'}}>☐ Good &nbsp; ☐ Fair &nbsp; ☐ Damage</td><td style={{padding:'8px',color:'#888'}}>______________</td>
+      </tr>)}
+    </tbody></table>
+    <div style={sR}><div style={sB}>Landlord initials & date</div><div style={sB}>Tenant initials & date</div></div>
+  </>;
+  if(docId==='rent-receipt')return <>
+    <div style={dH}>RENT PAYMENT RECEIPT</div><div style={dS}>Issued May 12, 2026</div>
+    <div style={dKV}><span style={dK}>Received from:</span><span style={dHi}>{unit?.tenant}</span></div>
+    <div style={dKV}><span style={dK}>For premises:</span><span>{prop?.address} · {unit?.label}</span></div>
+    <div style={dKV}><span style={dK}>Period:</span><span>May 2026</span></div>
+    <div style={dKV}><span style={dK}>Method:</span><span>Bank transfer</span></div>
+    <div style={dKV}><span style={dK}>Amount:</span><span style={{...dHi,fontSize:20}}>${unit?.rent}.00</span></div>
+    <div style={sR}><div style={sB}>Issued by Stephanie Hart / ISG LLC</div><div/></div>
+  </>;
+  return null;
+};
+
+const Documents = ({store,propertyId}) => {
+  const units=store.tenants.filter(u=>u.property===propertyId&&u.tenant);
+  const [selUnit,setSelUnit]=useState(units.find(u=>u.lease==='Section 8')?.id||units[0]?.id);
+  const [selDoc,setSelDoc]=useState('lead-paint');
+  const unit=units.find(u=>u.id===selUnit);
+  const prop=store.properties.find(p=>p.id===propertyId);
+  const doc=DOCS.find(d=>d.id===selDoc);
+  const download=()=>{
+    const el=document.getElementById('doc-preview');
+    if(!el)return;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${doc.name}</title><style>body{font-family:sans-serif;margin:48px 56px;color:#1a1a1a;}</style></head><body>${el.innerHTML}</body></html>`;
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+    a.download=`${doc.name.replace(/\s+/g,'-').toLowerCase()}.html`;a.click();
+  };
+  return <div style={{display:'flex',flexDirection:'column',gap:22,maxWidth:1080}}>
+    <Card padding={0}>
+      <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:14}}>
+        <Eyebrow>Generate for</Eyebrow>
+        <select value={selUnit} onChange={e=>setSelUnit(e.target.value)} style={{background:'transparent',border:'none',
+          color:'var(--fg-1)',fontFamily:'Geist,sans-serif',fontSize:15,fontWeight:500,cursor:'pointer',
+          paddingRight:24,outline:'none',appearance:'none',
+          backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23A39A86' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>")`,
+          backgroundRepeat:'no-repeat',backgroundPosition:'right 4px center'}}>
+          {units.map(u=><option key={u.id} value={u.id}>{u.tenant} — {u.label}{u.lease==='Section 8'?' (Section 8)':''}</option>)}
+        </select>
+        <Badge tone="brand" subtle>Auto-filled</Badge>
+      </div>
+    </Card>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
+      {DOCS.map(d=>{const active=d.id===selDoc;return(
+        <button key={d.id} onClick={()=>setSelDoc(d.id)} style={{textAlign:'left',cursor:'pointer',
+          background:active?'var(--surface-2)':'var(--surface-1)',
+          border:`1px solid ${active?'var(--accent)':'var(--line-1)'}`,
+          boxShadow:active?'0 0 0 3px rgba(94,234,212,0.12)':'none',
+          borderRadius:'var(--r-2)',padding:20,display:'flex',flexDirection:'column',gap:10,
+          fontFamily:'Geist,sans-serif',transition:'all 120ms'}}>
+          <div style={{width:38,height:38,borderRadius:'var(--r-1)',background:active?'var(--brand-faint)':'var(--surface-2)',
+            color:active?'var(--accent)':'var(--fg-2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <i data-lucide={d.icon} style={{width:18,height:18}}/>
+          </div>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--fg-1)'}}>{d.name}</div>
+          <div style={{fontSize:12,color:'var(--fg-3)',fontFamily:'Instrument Serif,serif',fontStyle:'italic',lineHeight:1.4}}>{d.meta}</div>
+          <Badge tone={d.tone} style={{alignSelf:'flex-start',marginTop:4}}>{d.badge}</Badge>
+        </button>);})}
+    </div>
+    <div style={{background:'var(--surface-1)',border:'1px solid var(--line-1)',borderRadius:'var(--r-2)',overflow:'hidden'}}>
+      <div style={{background:'var(--teal-950)',borderBottom:'1px solid #000',padding:'12px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <i data-lucide="file-text" style={{width:15,height:15,color:'var(--fg-2)'}}/>
+          <span style={{fontSize:13,fontWeight:600,color:'var(--fg-1)'}}>{doc?.name} — {unit?.tenant} · {unit?.label}</span>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <Btn variant="outline" icon="printer" size="sm" style={{background:'var(--surface-1)'}} onClick={()=>window.print()}>Print</Btn>
+          <Btn variant="primary" icon="download" size="sm" onClick={download}>Download</Btn>
+        </div>
+      </div>
+      <div id="doc-preview" style={{background:'var(--cream-50)',color:'#1a1a1a',padding:'48px 56px',minHeight:380,fontFamily:'Geist,sans-serif'}}>
+        <DocContent docId={selDoc} unit={unit} prop={prop}/>
+      </div>
+    </div>
+  </div>;
+};
+
+// ── CHECKLISTS ────────────────────────────────────────────────────────────────
+const CL_DEFS=[
+  {title:'Monthly close',items:['Reconcile bank','Categorize expenses','Send rent receipts','Update lease tracker']},
+  {title:'Move-in',items:['Move-in inspection','Keys + codes','Welcome packet','Lead paint disclosure','Smoke alarm test']},
+  {title:'Move-out',items:['Final inspection','Itemize deductions','Return deposit (45 days)','Photo documentation']},
+  {title:'Quarterly maintenance',items:['HVAC filter change','Smoke alarm test','Roof + gutter visual','Caulk + grout check']},
+];
+const CLItem = ({label}) => {const [c,setC]=useState(false);return(
+  <div style={{display:'flex',alignItems:'center',gap:10}}>
+    <Chk checked={c} onChange={setC}/>
+    <span style={{flex:1,fontSize:13,color:c?'var(--fg-3)':'var(--fg-1)',textDecoration:c?'line-through':'none'}}>{label}</span>
+  </div>);};
+const Checklists = () => (
+  <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16,maxWidth:980}}>
+    {CL_DEFS.map((l,i)=><Card key={i}>
+      <SHead title={l.title} icon="clipboard-check" meta={`${l.items.length} items`}/>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {l.items.map((it,ii)=><CLItem key={ii} label={it}/>)}
+      </div>
+    </Card>)}
+  </div>
+);
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+const RecordModal = ({open,onClose,store,propertyId,dispatch}) => {
+  const units=store.tenants.filter(u=>u.property===propertyId&&u.tenant);
+  const [uid,setUid]=useState(units.find(u=>u.status==='late')?.id||units[0]?.id||'');
+  const [amt,setAmt]=useState('');
+  const [method,setMethod]=useState('Bank transfer');
+  const [source,setSource]=useState('Tenant');
+  const [date,setDate]=useState('2026-05-12');
+  const [note,setNote]=useState('');
+  const unit=units.find(u=>u.id===uid);
+  useEffect(()=>{if(unit)setAmt(String(unit.tenantShare||unit.rent));},[uid]);
+  const save=()=>{
+    dispatch({type:'ADD_PAYMENT',payment:{id:'P-'+Date.now(),tenant:unit?.tenant||'',unit:unit?.label||'',property:propertyId,period:'May 2026',method,source,amount:parseFloat(amt)||0,status:'paid',date}});
+    onClose();
+  };
+  return <Modal open={open} onClose={onClose} title="Record payment" subtitle="Adds an entry to your ledger."
+    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" icon="check" onClick={save}>Save payment</Btn></>}>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+      <Field label="Unit" required style={{gridColumn:'span 2'}}>
+        <Sel value={uid} onChange={setUid} options={units.map(u=>({value:u.id,label:`${u.label} — ${u.tenant}`}))}/>
+      </Field>
+      <Field label="Amount" required><Inp value={amt} onChange={setAmt} type="number" prefix="$"/></Field>
+      <Field label="Date received" required><Inp value={date} onChange={setDate} type="date"/></Field>
+      <Field label="Method" required><Sel value={method} onChange={setMethod} options={['Bank transfer','Zelle','Check','Cash','HAP (Section 8)']}/></Field>
+      <Field label="Source" required><Sel value={source} onChange={setSource} options={['Tenant','HAP','Co-signer','Other']}/></Field>
+      <Field label="Memo" optional style={{gridColumn:'span 2'}} hint="Visible to you only.">
+        <Inp value={note} onChange={setNote} placeholder="e.g. April 2026 catch-up"/>
+      </Field>
+    </div>
+    {unit?.lease==='Section 8'&&<div style={{marginTop:16,padding:14,background:'var(--play-tint)',borderRadius:'var(--r-1)',border:'1px solid rgba(217,178,111,0.25)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'var(--play-500)',fontWeight:600,letterSpacing:'0.04em',textTransform:'uppercase'}}>
+        <i data-lucide="key-round" style={{width:13,height:13}}/> Section 8 unit
+      </div>
+      <div style={{fontSize:13,color:'var(--fg-1)',marginTop:6}}>HAP portion is ${unit.hapRent}, tenant share is ${unit.tenantShare}. Record each separately if received on different dates.</div>
+    </div>}
+  </Modal>;
+};
+
+const AddPropModal = ({open,onClose,dispatch}) => {
+  const [step,setStep]=useState(1);
+  const [name,setName]=useState('');const [addr,setAddr]=useState('');
+  const [year,setYear]=useState('2000');const [nu,setNu]=useState('2');
+  const [city,setCity]=useState('');const [st,setSt]=useState('IN');
+  const pre78=parseInt(year)<1978;
+  const finish=()=>{
+    dispatch({type:'ADD_PROP',prop:{id:'p-'+Date.now(),name:name||'New Property',address:addr||city+', '+st,city:city+', '+st,units:parseInt(nu)||2,yearBuilt:parseInt(year)||2000,dot:'#6BA8C7'}});
+    onClose();setStep(1);setName('');setAddr('');setYear('2000');setNu('2');
+  };
+  return <Modal open={open} onClose={onClose} title={null} width={560}
+    footer={<>{step>1&&<Btn variant="ghost" icon="arrow-left" onClick={()=>setStep(s=>s-1)}>Back</Btn>}
+      <div style={{flex:1}}/>{step<4?<Btn variant="primary" iconRight="arrow-right" onClick={()=>setStep(s=>s+1)}>Continue</Btn>:<Btn variant="primary" icon="check" onClick={finish}>Finish setup</Btn>}</>}>
+    <div style={{marginBottom:24}}>
+      <Prog value={step} total={4} height={3}/>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:12}}>
+        <Eyebrow>Step {step} of 4</Eyebrow>
+        <div style={{display:'flex',gap:6}}>{[...Array(4)].map((_,i)=><Dia key={i} color={i<step?'var(--accent)':'var(--line-2)'} size={6}/>)}</div>
+      </div>
+    </div>
+    {step===1&&<><h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Add a property.</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>Start with the basics.</p>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <Field label="Property name" required hint="A nickname only you see."><Inp value={name} onChange={setName} placeholder="My building"/></Field>
+        <Field label="Street address" required><Inp value={addr} onChange={setAddr} placeholder="1234 Main St, City, ST ZIP"/></Field>
+      </div></>}
+    {step===2&&<><h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Tell us about the building.</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>This determines compliance requirements.</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Field label="Year built" required><Inp value={year} onChange={setYear} type="number"/></Field>
+        <Field label="Number of units" required><Inp value={nu} onChange={setNu} type="number"/></Field>
+      </div>
+      {pre78&&<div style={{marginTop:20,padding:14,background:'var(--play-tint)',borderRadius:'var(--r-1)',borderLeft:'3px solid var(--play-500)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'var(--play-500)',fontWeight:600,textTransform:'uppercase'}}><i data-lucide="alert-triangle" style={{width:13,height:13}}/> Lead paint disclosure required</div>
+        <div style={{fontSize:13,color:'var(--fg-1)',marginTop:6,lineHeight:1.5}}>Buildings built before 1978 require a federal Lead-Based Paint Disclosure before each lease signing.</div>
+      </div>}</>}
+    {step===3&&<><h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Where is it?</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>Sets jurisdiction-specific compliance items.</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Field label="City" required><Inp value={city} onChange={setCity} placeholder="Hammond"/></Field>
+        <Field label="State" required><Sel value={st} onChange={setSt} options={['IN','IL','MI','OH','Other']}/></Field>
+      </div></>}
+    {step===4&&<><h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Ready to roll.</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>Review and finish.</p>
+      <div style={{background:'var(--surface-1)',border:'1px solid var(--line-1)',borderRadius:'var(--r-2)',padding:18,display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        {[{k:'Name',v:name||'—'},{k:'Address',v:addr||'—'},{k:'Year built',v:year},{k:'Units',v:nu}].map((r,i)=>
+          <div key={i}><Eyebrow>{r.k}</Eyebrow><div style={{fontSize:13,color:'var(--fg-1)',marginTop:4}}>{r.v}</div></div>)}
+      </div>
+      <div style={{marginTop:14,fontSize:12,color:'var(--fg-2)'}}><Dia color="var(--safe-500)" size={7}/> We'll pre-populate {pre78?'8':'6'} compliance items based on this property.</div>
+    </>}
+  </Modal>;
+};
+
+// ── ADD TENANT MODAL ──────────────────────────────────────────────────────────
+// preUnit: if opened from a vacant unit card, pre-selects that unit
+const AddTenantModal = ({open,onClose,store,propertyId,dispatch,preUnit}) => {
+  const allUnits=store.tenants.filter(u=>u.property===propertyId);
+  const vacantUnits=allUnits.filter(u=>u.status==='vacant');
+
+  const [step,setStep]=useState(1);
+  // Step 1 — unit selection
+  const [unitId,setUnitId]=useState('');
+  // Step 2 — tenant info
+  const [name,setName]=useState('');
+  const [lease,setLease]=useState('1-year');
+  const [moveIn,setMoveIn]=useState('2026-06-01');
+  const [leaseEnd,setLeaseEnd]=useState('2027-05-31');
+  const [rent,setRent]=useState('');
+  const [isS8,setIsS8]=useState(false);
+  const [hapRent,setHapRent]=useState('');
+  const [tenantShare,setTenantShare]=useState('');
+  // Step 3 — confirm
+
+  useEffect(()=>{
+    if(open){
+      setStep(preUnit?2:1);
+      setUnitId(preUnit?.id||'');
+      setRent(preUnit?String(preUnit.rent):'');
+      setName('');setLease('1-year');setMoveIn('2026-06-01');setLeaseEnd('2027-05-31');
+      setIsS8(false);setHapRent('');setTenantShare('');
+    }
+  },[open,preUnit]);
+
+  const selectedUnit=allUnits.find(u=>u.id===unitId)||preUnit;
+  const initials=(n)=>n.trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+  const save=()=>{
+    if(!name.trim()||!unitId&&!preUnit)return;
+    const uid=unitId||(preUnit?.id);
+    const updated={
+      ...allUnits.find(u=>u.id===uid),
+      tenant:name.trim(),
+      initials:initials(name),
+      lease,moveIn,leaseEnd,
+      rent:parseFloat(rent)||0,
+      hapRent:isS8?parseFloat(hapRent)||0:null,
+      tenantShare:isS8?parseFloat(tenantShare)||0:null,
+      status:'occupied',
+      vacantSince:undefined,listedOn:undefined,
+    };
+    dispatch({type:'ADD_TENANT',tenant:updated});
+    onClose();
+  };
+
+  const totalSteps=3;
+  const canNext=(()=>{
+    if(step===1)return!!(unitId||preUnit);
+    if(step===2)return name.trim().length>0&&(parseFloat(rent)||0)>0;
+    return true;
+  })();
+
+  const leaseOptions=['Month-to-month','6-month','1-year','2-year','Section 8'];
+
+  return <Modal open={open} onClose={onClose} title={null} width={540}
+    footer={<>
+      {step>1&&!preUnit&&<Btn variant="ghost" icon="arrow-left" onClick={()=>setStep(s=>s-1)}>Back</Btn>}
+      {step>1&&preUnit&&<Btn variant="ghost" onClick={onClose}>Cancel</Btn>}
+      <div style={{flex:1}}/>
+      {step<totalSteps
+        ?<Btn variant="primary" iconRight="arrow-right" onClick={()=>canNext&&setStep(s=>s+1)} style={{opacity:canNext?1:0.4}}>Continue</Btn>
+        :<Btn variant="primary" icon="user-plus" onClick={save}>Add tenant</Btn>}
+    </>}>
+
+    {/* Progress */}
+    <div style={{marginBottom:24}}>
+      <Prog value={step} total={totalSteps} height={3}/>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:12}}>
+        <Eyebrow>Step {step} of {totalSteps}</Eyebrow>
+        <div style={{display:'flex',gap:6}}>{[...Array(totalSteps)].map((_,i)=><Dia key={i} color={i<step?'var(--accent)':'var(--line-2)'} size={6}/>)}</div>
+      </div>
+    </div>
+
+    {step===1&&<>
+      <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Which unit?</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>Select a vacant unit to place this tenant in, or add to any existing unit.</p>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {allUnits.map(u=>{
+          const sel=unitId===u.id;
+          const isVacant=u.status==='vacant';
+          return <button key={u.id} onClick={()=>setUnitId(u.id)} style={{
+            display:'flex',alignItems:'center',gap:14,padding:'14px 16px',
+            background:sel?'var(--surface-2)':'var(--surface-1)',
+            border:`1px solid ${sel?'var(--accent)':'var(--line-1)'}`,
+            boxShadow:sel?'0 0 0 3px rgba(94,234,212,0.10)':'none',
+            borderRadius:'var(--r-2)',cursor:'pointer',textAlign:'left',fontFamily:'Geist,sans-serif',
+            transition:'all 120ms',
+          }}>
+            <Dia color={isVacant?'var(--fg-4)':u.status==='late'?'var(--out-500)':'var(--safe-500)'} size={9}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:600,color:'var(--fg-1)'}}>{u.label}</div>
+              <div style={{fontSize:12,color:'var(--fg-3)',marginTop:2}}>
+                {isVacant?`Vacant · Asking ${fmt(u.rent)}/mo`:`${u.tenant} · ${u.lease} · ${fmt(u.rent)}/mo`}
+              </div>
+            </div>
+            {isVacant&&<Badge tone="neutral">Vacant</Badge>}
+            {sel&&<i data-lucide="check" style={{width:16,height:16,color:'var(--accent)'}}/>}
+          </button>;
+        })}
+      </div>
+    </>}
+
+    {step===2&&<>
+      <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Tenant details.</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>
+        Placing in <strong style={{color:'var(--fg-1)'}}>{selectedUnit?.label||'unit'}</strong>. You can edit any of this later.
+      </p>
+      <div style={{display:'flex',flexDirection:'column',gap:16}}>
+        <Field label="Full name" required>
+          <Inp value={name} onChange={setName} placeholder="First Last"/>
+        </Field>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <Field label="Lease type" required>
+            <Sel value={lease} onChange={v=>{setLease(v);setIsS8(v==='Section 8');}} options={leaseOptions}/>
+          </Field>
+          <Field label="Move-in date" required>
+            <Inp value={moveIn} onChange={setMoveIn} type="date"/>
+          </Field>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <Field label="Lease end date" optional>
+            <Inp value={leaseEnd} onChange={setLeaseEnd} type="date"/>
+          </Field>
+          <Field label="Monthly rent" required>
+            <Inp value={rent} onChange={setRent} type="number" prefix="$"/>
+          </Field>
+        </div>
+
+        {/* Section 8 toggle */}
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',
+          background:'var(--play-tint)',borderRadius:'var(--r-1)',border:'1px solid rgba(217,178,111,0.2)'}}>
+          <Chk checked={isS8} onChange={v=>{setIsS8(v);setLease(v?'Section 8':'1-year');}}/>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--play-500)'}}>Section 8 / HCV tenant</div>
+            <div style={{fontSize:12,color:'var(--fg-2)',marginTop:2}}>Splits rent into HAP + tenant share</div>
+          </div>
+        </div>
+
+        {isS8&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <Field label="HAP amount" required hint="Paid by housing authority">
+            <Inp value={hapRent} onChange={setHapRent} type="number" prefix="$"/>
+          </Field>
+          <Field label="Tenant share" required hint="Paid by tenant">
+            <Inp value={tenantShare} onChange={setTenantShare} type="number" prefix="$"/>
+          </Field>
+        </div>}
+      </div>
+    </>}
+
+    {step===3&&<>
+      <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,lineHeight:1.1,margin:0}}>Ready to add.</h2>
+      <p className="meta" style={{marginTop:8,marginBottom:20,fontSize:13}}>Review the details before saving.</p>
+      <Card padding={20} style={{display:'flex',flexDirection:'column',gap:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,paddingBottom:14,borderBottom:'1px solid var(--line-1)'}}>
+          <div style={{width:38,height:38,borderRadius:'var(--r-pill)',background:'var(--teal-700)',
+            color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600}}>
+            {initials(name)||'?'}
+          </div>
+          <div>
+            <div style={{fontSize:16,fontWeight:600,color:'var(--fg-1)'}}>{name||'—'}</div>
+            <div style={{fontSize:12,color:'var(--fg-3)'}}>{selectedUnit?.label} · Moving in {moveIn}</div>
+          </div>
+          {isS8&&<Badge tone="play" style={{marginLeft:'auto'}}>Section 8</Badge>}
+        </div>
+        {[
+          {k:'Lease type',v:lease},
+          {k:'Move-in',v:moveIn},
+          {k:'Lease end',v:leaseEnd||'Month-to-month'},
+          isS8
+            ?{k:'Rent split',v:`${fmt(parseFloat(hapRent)||0)} HAP + ${fmt(parseFloat(tenantShare)||0)} tenant = ${fmt((parseFloat(hapRent)||0)+(parseFloat(tenantShare)||0))}/mo`}
+            :{k:'Monthly rent',v:fmt(parseFloat(rent)||0)+'/mo'},
+        ].filter(Boolean).map((r,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+          <span style={{color:'var(--fg-3)'}}>{r.k}</span>
+          <span className="mono" style={{color:'var(--fg-1)'}}>{r.v}</span>
+        </div>)}
+      </Card>
+      {selectedUnit?.status==='occupied'&&<div style={{marginTop:14,padding:12,background:'var(--play-tint)',borderRadius:'var(--r-1)',border:'1px solid rgba(217,178,111,0.25)',fontSize:12,color:'var(--play-500)'}}>
+        <i data-lucide="alert-triangle" style={{width:13,height:13,display:'inline',marginRight:6}}/>
+        This unit currently has a tenant. Adding a new one will replace the existing record.
+      </div>}
+    </>}
+  </Modal>;
+};
+
+// ── ADD UNIT MODAL ────────────────────────────────────────────────────────────
+const AddUnitModal = ({open,onClose,store,propertyId,dispatch}) => {
+  const prop=store.properties.find(p=>p.id===propertyId);
+  const existingUnits=store.tenants.filter(u=>u.property===propertyId);
+  const nextNum=existingUnits.length+1;
+
+  const [label,setLabel]=useState('');
+  const [rent,setRent]=useState('');
+  const [beds,setBeds]=useState('2');
+  const [baths,setBaths]=useState('1');
+  const [sqft,setSqft]=useState('');
+  const [notes,setNotes]=useState('');
+
+  useEffect(()=>{
+    if(open){
+      setLabel(`Unit ${nextNum}`);
+      setRent('');setBeds('2');setBaths('1');setSqft('');setNotes('');
+    }
+  },[open]);
+
+  const save=()=>{
+    if(!label.trim()||(parseFloat(rent)||0)===0)return;
+    const newUnit={
+      id:`${propertyId}-u${Date.now()}`,
+      property:propertyId,
+      label:label.trim(),
+      tenant:null,initials:null,
+      rent:parseFloat(rent)||0,
+      hapRent:null,tenantShare:null,
+      lease:null,leaseEnd:null,
+      status:'vacant',
+      vacantSince:new Date().toISOString().slice(0,10),
+      listedOn:'—',
+      beds:parseInt(beds)||2,
+      baths:parseFloat(baths)||1,
+      sqft:parseInt(sqft)||null,
+      notes:notes.trim()||null,
+    };
+    dispatch({type:'ADD_UNIT',unit:newUnit});
+    onClose();
+  };
+
+  const canSave=label.trim().length>0&&(parseFloat(rent)||0)>0;
+
+  return <Modal open={open} onClose={onClose} title="Add unit"
+    subtitle={`Adding to ${prop?.name||'property'}`}
+    footer={<>
+      <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+      <Btn variant="primary" icon="door-open" onClick={save} style={{opacity:canSave?1:0.4}}>Add unit</Btn>
+    </>}>
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Field label="Unit label" required hint='e.g. "Unit 5" or "2B"'>
+          <Inp value={label} onChange={setLabel} placeholder="Unit 5"/>
+        </Field>
+        <Field label="Asking rent" required>
+          <Inp value={rent} onChange={setRent} type="number" prefix="$"/>
+        </Field>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+        <Field label="Bedrooms">
+          <Sel value={beds} onChange={setBeds} options={['Studio','1','2','3','4','5+']}/>
+        </Field>
+        <Field label="Bathrooms">
+          <Sel value={baths} onChange={setBaths} options={['1','1.5','2','2.5','3']}/>
+        </Field>
+        <Field label="Sq ft" optional>
+          <Inp value={sqft} onChange={setSqft} type="number" placeholder="850"/>
+        </Field>
+      </div>
+      <Field label="Notes" optional hint="Internal note — not tenant-facing.">
+        <Inp value={notes} onChange={setNotes} placeholder="e.g. Ground floor, garden access"/>
+      </Field>
+
+      {/* Preview card */}
+      <div style={{marginTop:4,padding:'14px 18px',background:'var(--surface-0)',borderRadius:'var(--r-2)',border:'1px solid var(--line-1)'}}>
+        <Eyebrow style={{marginBottom:10}}>Preview</Eyebrow>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <Dia color="var(--fg-4)" size={8}/>
+            <span style={{fontSize:14,fontWeight:600,color:'var(--fg-1)'}}>{label||'Unit ?'}</span>
+            <Badge tone="neutral">Vacant</Badge>
+          </div>
+          <span className="mono" style={{fontSize:14,color:'var(--fg-1)'}}>{rent?fmt(parseFloat(rent)):fmt(0)}/mo</span>
+        </div>
+        <div style={{fontSize:12,color:'var(--fg-3)',marginTop:6}}>
+          {beds==='Studio'?'Studio':beds+' bed'} · {baths} bath{baths!=='1'?'s':''}{sqft?` · ${sqft} sq ft`:''}
+          {' · '}{prop?.address}
+        </div>
+      </div>
+    </div>
+  </Modal>;
+};
+
+// ── REDUCER ───────────────────────────────────────────────────────────────────
+function reducer(state,action) {
+  let next;
+  switch(action.type) {
+    case 'TOGGLE_COMP': {
+      const groups=state.compliance[action.propertyId].map((g,gi)=>gi!==action.gi?g:{...g,items:g.items.map((it,ii)=>ii!==action.ii?it:{...it,done:!it.done})});
+      next={...state,compliance:{...state.compliance,[action.propertyId]:groups}};break;}
+    case 'ADD_PAYMENT': next={...state,payments:[action.payment,...state.payments]};break;
+    case 'ADD_PROP':    next={...state,properties:[...state.properties,action.prop]};break;
+    case 'ADD_TENANT': {
+      // If filling a vacant unit, update that unit; otherwise add new unit row
+      const exists=state.tenants.find(u=>u.id===action.tenant.id);
+      const tenants=exists
+        ? state.tenants.map(u=>u.id===action.tenant.id?action.tenant:u)
+        : [...state.tenants,action.tenant];
+      next={...state,tenants};break;}
+    case 'ADD_UNIT': next={...state,tenants:[...state.tenants,action.unit]};break;
+    default: return state;
+  }
+  saveStore(next);return next;
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+const TITLES={
+  dashboard:{t:'Dashboard'},portfolio:{t:'Portfolio',sub:'All properties'},
+  units:{t:'Units'},tenants:{t:'Tenants'},payments:{t:'Payments'},
+  expenses:{t:'Expenses'},financials:{t:'Financials',sub:'P&L · cash basis'},
+  repairs:{t:'Repairs'},schedule:{t:'Schedule',sub:'Upcoming events & deadlines'},
+  'local-laws':{t:'Local laws',sub:'Compliance tracker'},
+  'section-8':{t:'Section 8',sub:'HCV program tracking'},
+  documents:{t:'Documents',sub:'Generate & manage tenant paperwork'},
+  checklists:{t:'Checklists',sub:'Recurring + one-time'},
+};
+const PROP_CTX=['dashboard','units','tenants','payments','expenses','financials','repairs','local-laws','section-8','documents'];
+
+function App() {
+  const [store,dispatch]=useReducer(reducer,null,loadStore);
+  const [active,setActive]=useState('dashboard');
+  const [curProp,setCurProp]=useState('hammond');
+  const [showPay,setShowPay]=useState(false);
+  const [showAdd,setShowAdd]=useState(false);
+  const [showTenant,setShowTenant]=useState(false);
+  const [showUnit,setShowUnit]=useState(false);
+  const [preUnit,setPreUnit]=useState(null); // vacant unit that triggered Add Tenant
+
+  useEffect(()=>{const t=setTimeout(()=>window.lucide&&window.lucide.createIcons(),60);return()=>clearTimeout(t);});
+
+  const prop=store.properties.find(p=>p.id===curProp)||store.properties[0];
+  const meta=TITLES[active]||{t:''};
+  const subtitle=meta.sub||(PROP_CTX.includes(active)?`${prop.name} · ${prop.units} units · ${prop.city}`:null);
+
+  const nav=(key)=>setActive(key);
+  const setCurrentProp=(id)=>{setCurProp(id);setActive('dashboard');};
+
+  const handleExport=()=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(store,null,2)],{type:'application/json'}));
+    a.download='homerun-backup.json';a.click();
+  };
+
+  const openAddTenant=(unit)=>{setPreUnit(unit||null);setShowTenant(true);};
+
+  let primaryAction;
+  if(active==='payments') primaryAction=<Btn variant="primary" icon="plus" onClick={()=>setShowPay(true)}>Record payment</Btn>;
+  else if(active==='expenses') primaryAction=<Btn variant="primary" icon="plus">Add expense</Btn>;
+  else if(active==='repairs')  primaryAction=<Btn variant="primary" icon="plus">New ticket</Btn>;
+  else if(active==='documents') primaryAction=<Btn variant="primary" icon="download">Generate all</Btn>;
+  else if(active==='tenants')  primaryAction=<div style={{display:'flex',gap:8}}>
+    <Btn variant="outline" icon="door-open" onClick={()=>setShowUnit(true)}>Add unit</Btn>
+    <Btn variant="primary" icon="user-plus" onClick={()=>openAddTenant(null)}>Add tenant</Btn>
+  </div>;
+  else if(active==='units') primaryAction=<div style={{display:'flex',gap:8}}>
+    <Btn variant="outline" icon="door-open" onClick={()=>setShowUnit(true)}>Add unit</Btn>
+    <Btn variant="primary" icon="user-plus" onClick={()=>openAddTenant(null)}>Add tenant</Btn>
+  </div>;
+  else primaryAction=<Btn variant="primary" icon="plus" onClick={()=>setShowAdd(true)}>Add property</Btn>;
+
+  const p={store,propertyId:curProp,navigate:nav,dispatch,onAddTenant:openAddTenant,onAddUnit:()=>setShowUnit(true)};
+  let view;
+  if(active==='dashboard')   view=<Dashboard {...p}/>;
+  else if(active==='portfolio')   view=<Portfolio {...p} setCurrentProp={setCurrentProp}/>;
+  else if(active==='units')       view=<UnitsView {...p}/>;
+  else if(active==='tenants')     view=<Tenants {...p}/>;
+  else if(active==='payments')    view=<Payments {...p} openRecord={()=>setShowPay(true)}/>;
+  else if(active==='expenses')    view=<Expenses {...p}/>;
+  else if(active==='financials')  view=<Financials {...p}/>;
+  else if(active==='repairs')     view=<Repairs {...p}/>;
+  else if(active==='schedule')    view=<Schedule {...p}/>;
+  else if(active==='local-laws')  view=<ComplianceView {...p}/>;
+  else if(active==='section-8')   view=<Section8View {...p}/>;
+  else if(active==='documents')   view=<Documents {...p}/>;
+  else if(active==='checklists')  view=<Checklists/>;
+
+  return <div style={{display:'flex',minHeight:'100vh',background:'var(--bg-canvas)'}}>
+    <Sidebar store={store} currentProp={curProp} setCurrent={setCurrentProp}
+      activeKey={active} onNav={nav} onAddProp={()=>setShowAdd(true)} onExport={handleExport}/>
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}>
+      <TopBar title={meta.t} subtitle={subtitle} primaryAction={primaryAction}/>
+      <main style={{padding:'28px 32px 96px',flex:1,width:'100%',maxWidth:1440}}>{view}</main>
+    </div>
+    <RecordModal open={showPay} onClose={()=>setShowPay(false)} store={store} propertyId={curProp} dispatch={dispatch}/>
+    <AddPropModal open={showAdd} onClose={()=>setShowAdd(false)} dispatch={dispatch}/>
+    <AddTenantModal open={showTenant} onClose={()=>{setShowTenant(false);setPreUnit(null);}} store={store} propertyId={curProp} dispatch={dispatch} preUnit={preUnit}/>
+    <AddUnitModal open={showUnit} onClose={()=>setShowUnit(false)} store={store} propertyId={curProp} dispatch={dispatch}/>
+  </div>;
+}
+
+setTimeout(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>),80);
+</script>
+</body>
+</html>
