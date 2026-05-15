@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>HomeRun · Tenant Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --teal-950:#081413;--teal-900:#0B1B19;--teal-850:#0F2322;--teal-800:#14302D;
+      --teal-750:#183835;--teal-700:#1F3C39;--teal-500:#2A8B82;--teal-400:#3FA89E;
+      --teal-300:#5EEAD4;
+      --cream-50:#F4ECDC;--cream-200:#C9BFA8;--cream-300:#A39A86;--cream-400:#7A7363;
+      --safe-500:#88B07A;--out-500:#E07A5F;--play-500:#D9B26F;--info-500:#6BA8C7;
+      --safe-tint:rgba(136,176,122,0.14);--out-tint:rgba(224,122,95,0.14);
+      --play-tint:rgba(217,178,111,0.14);--info-tint:rgba(107,168,199,0.14);
+      --brand-faint:rgba(42,139,130,0.12);
+      --surface-0:var(--teal-900);--surface-1:var(--teal-850);--surface-2:var(--teal-800);
+      --fg-1:var(--cream-50);--fg-2:var(--cream-200);--fg-3:var(--cream-300);--fg-4:var(--cream-400);
+      --line-1:#1F3C39;--line-2:#2A4F4B;
+      --brand:var(--teal-500);--accent:var(--teal-300);--on-brand:var(--cream-50);
+      --r-1:6px;--r-2:10px;--r-3:16px;--r-pill:999px;
+      --shadow-2:0 1px 0 0 rgba(255,255,255,0.05) inset,0 16px 48px -12px rgba(0,0,0,0.6);
+      --ease-out:cubic-bezier(0.2,0,0,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    html,body{margin:0;background:var(--teal-950);color:var(--fg-1);
+      font-family:'Geist','Inter',system-ui,sans-serif;font-size:16px;line-height:1.45;
+      -webkit-font-smoothing:antialiased;}
+    input,button,textarea,select{font-family:inherit;}
+    input::placeholder,textarea::placeholder{color:var(--fg-4);}
+    button:focus-visible,input:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(94,234,212,0.35);}
+    .mono{font-family:'Geist Mono',monospace;font-variant-numeric:tabular-nums;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://lzdxwjbdrwcakxuhhrtw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_C7ERLF_dIwh0788YuFJrfw_M_YBdt2T';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── SIMULATED DATA ────────────────────────────────────────────────────────────
+// In production this would come from a real backend.
+// Tenants are looked up by email. Code is always 123456 (simulated).
+const TENANT_DB = [
+  { id:'h-1', email:'marcus.j@email.com', name:'Marcus Johnson', initials:'MJ',
+    unit:'Unit 1', property:'Hammond Fourplex', address:'1234 Main St, Hammond, IN 46320',
+    rent:1100, hapRent:null, tenantShare:null, lease:'1-year',
+    leaseStart:'2024-01-01', leaseEnd:'2026-12-31', moveIn:'2024-01-01',
+    status:'current', daysLate:null, renewalOffered:false,
+    landlord:'Stephanie Hart', landlordEmail:'stephanie@isg-llc.com', landlordPhone:'(312) 555-0100',
+    payments:[
+      {id:'P-241',period:'May 2026',amount:1100,status:'paid',date:'2026-05-01',method:'Zelle'},
+      {id:'P-237',period:'April 2026',amount:1100,status:'paid',date:'2026-04-01',method:'Zelle'},
+      {id:'P-234',period:'March 2026',amount:1100,status:'paid',date:'2026-03-01',method:'Zelle'},
+    ],
+  },
+  { id:'h-2', email:'ltorres@email.com', name:'Lisa Torres', initials:'LT',
+    unit:'Unit 2', property:'Hammond Fourplex', address:'1234 Main St, Hammond, IN 46320',
+    rent:1050, hapRent:null, tenantShare:null, lease:'6-month',
+    leaseStart:'2025-03-01', leaseEnd:'2026-08-31', moveIn:'2025-03-01',
+    status:'current', daysLate:null, renewalOffered:true,
+    landlord:'Stephanie Hart', landlordEmail:'stephanie@isg-llc.com', landlordPhone:'(312) 555-0100',
+    payments:[
+      {id:'P-240',period:'May 2026',amount:1050,status:'paid',date:'2026-05-01',method:'Bank transfer'},
+      {id:'P-236',period:'April 2026',amount:1050,status:'paid',date:'2026-04-01',method:'Bank transfer'},
+    ],
+  },
+  { id:'h-3', email:'dkim@email.com', name:'David Kim', initials:'DK',
+    unit:'Unit 3', property:'Hammond Fourplex', address:'1234 Main St, Hammond, IN 46320',
+    rent:1050, hapRent:700, tenantShare:350, lease:'Section 8',
+    leaseStart:'2023-05-01', leaseEnd:'2027-04-30', moveIn:'2023-05-01',
+    status:'late', daysLate:10, renewalOffered:false,
+    landlord:'Stephanie Hart', landlordEmail:'stephanie@isg-llc.com', landlordPhone:'(312) 555-0100',
+    payments:[
+      {id:'P-239',period:'May 2026',amount:700,status:'paid',date:'2026-05-03',method:'HAP',source:'HAP'},
+      {id:'P-238',period:'April 2026',amount:350,status:'late',date:'2026-04-01',method:'Check',source:'Tenant'},
+    ],
+  },
+  { id:'g-1', email:'abrown@email.com', name:'Aliyah Brown', initials:'AB',
+    unit:'Unit A', property:'Gary Duplex', address:'809 Pierce St, Gary, IN 46402',
+    rent:950, hapRent:null, tenantShare:null, lease:'1-year',
+    leaseStart:'2025-10-01', leaseEnd:'2026-09-30', moveIn:'2025-10-01',
+    status:'current', daysLate:null, renewalOffered:true,
+    landlord:'Stephanie Hart', landlordEmail:'stephanie@isg-llc.com', landlordPhone:'(312) 555-0100',
+    payments:[
+      {id:'P-233',period:'May 2026',amount:950,status:'paid',date:'2026-05-01',method:'Bank transfer'},
+      {id:'P-231',period:'April 2026',amount:950,status:'paid',date:'2026-04-01',method:'Bank transfer'},
+    ],
+  },
+  { id:'g-2', email:'mwright@email.com', name:'Marcus Wright', initials:'MW',
+    unit:'Unit B', property:'Gary Duplex', address:'809 Pierce St, Gary, IN 46402',
+    rent:925, hapRent:null, tenantShare:null, lease:'Month-to-month',
+    leaseStart:'2022-06-01', leaseEnd:null, moveIn:'2022-06-01',
+    status:'current', daysLate:null, renewalOffered:false,
+    landlord:'Stephanie Hart', landlordEmail:'stephanie@isg-llc.com', landlordPhone:'(312) 555-0100',
+    payments:[
+      {id:'P-232',period:'May 2026',amount:925,status:'paid',date:'2026-05-02',method:'Cash'},
+    ],
+  },
+];
+
+const DEMO_CODE = '123456';
+const TODAY = new Date('2026-05-13');
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const fmt = (n) => '$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+function daysUntil(dateStr) {
+  if(!dateStr) return null;
+  return Math.round((new Date(dateStr)-TODAY)/(1000*60*60*24));
+}
+
+// ── PRIMITIVES ────────────────────────────────────────────────────────────────
+const Card = ({children,padding=24,style,accent}) => (
+  <div style={{background:'var(--surface-1)',border:'1px solid var(--line-1)',
+    borderRadius:'var(--r-2)',padding,
+    borderLeft:accent?`3px solid ${accent}`:undefined,...style}}>{children}</div>
+);
+
+const Badge = ({children,tone='neutral',style}) => {
+  const T={safe:{bg:'var(--safe-tint)',fg:'var(--safe-500)'},out:{bg:'var(--out-tint)',fg:'var(--out-500)'},
+    play:{bg:'var(--play-tint)',fg:'var(--play-500)'},info:{bg:'var(--info-tint)',fg:'var(--info-500)'},
+    neutral:{bg:'var(--surface-2)',fg:'var(--fg-2)'},brand:{bg:'var(--brand-faint)',fg:'var(--teal-300)'}};
+  const t=T[tone]||T.neutral;
+  return <span style={{display:'inline-flex',alignItems:'center',background:t.bg,color:t.fg,
+    fontFamily:'Geist,sans-serif',fontSize:11,fontWeight:500,padding:'3px 9px',
+    borderRadius:'var(--r-pill)',whiteSpace:'nowrap',...style}}>{children}</span>;
+};
+
+const Btn = ({children,variant='secondary',onClick,icon,size='md',style,type,disabled}) => {
+  const V={
+    primary:{background:'var(--brand)',color:'var(--on-brand)',border:'1px solid var(--brand)'},
+    secondary:{background:'var(--surface-2)',color:'var(--fg-1)',border:'1px solid var(--line-2)'},
+    ghost:{background:'transparent',color:'var(--fg-2)',border:'1px solid transparent'},
+    outline:{background:'transparent',color:'var(--fg-1)',border:'1px solid var(--line-2)'},
+    danger:{background:'var(--out-tint)',color:'var(--out-500)',border:'1px solid rgba(224,122,95,0.35)'},
+    safe:{background:'var(--safe-tint)',color:'var(--safe-500)',border:'1px solid rgba(136,176,122,0.35)'},
+  };
+  const S={sm:{padding:'5px 10px',fontSize:12},md:{padding:'9px 14px',fontSize:14},lg:{padding:'12px 20px',fontSize:15}};
+  return <button type={type||'button'} onClick={onClick} disabled={disabled} style={{
+    fontFamily:'Geist,sans-serif',fontWeight:500,borderRadius:'var(--r-1)',
+    display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center',
+    cursor:disabled?'not-allowed':'pointer',opacity:disabled?0.5:1,
+    transition:'background 120ms',...S[size],...V[variant],...style}}>
+    {icon&&<i data-lucide={icon} style={{width:15,height:15}}/>}{children}
+  </button>;
+};
+
+const Inp = ({value,onChange,placeholder,type='text',style,autoFocus}) => (
+  <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+    type={type} autoFocus={autoFocus} style={{
+    width:'100%',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+    borderRadius:'var(--r-1)',padding:'11px 14px',color:'var(--fg-1)',
+    fontFamily:type==='number'?'Geist Mono,monospace':'Geist,sans-serif',
+    fontSize:15,outline:'none',...style}}/>
+);
+
+const Eyebrow = ({children,style}) => (
+  <div style={{fontFamily:'Geist,sans-serif',fontSize:11,fontWeight:500,letterSpacing:'0.08em',
+    textTransform:'uppercase',color:'var(--fg-3)',...style}}>{children}</div>
+);
+
+// ── SCREENS ───────────────────────────────────────────────────────────────────
+
+// ── 1. EMAIL ENTRY ────────────────────────────────────────────────────────────
+const EmailScreen = ({onSend}) => {
+  const [email,setEmail]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState('');
+
+  const handleSend = async () => {
+    const tenant = TENANT_DB.find(t=>t.email.toLowerCase()===email.toLowerCase().trim());
+    if(!tenant){
+      setError('No account found for that email. Check with your landlord.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.href }
+    });
+    setLoading(false);
+    if(authError){
+      // Fall back to simulated flow for local file testing
+      setTimeout(()=>{ setLoading(false); onSend(email.toLowerCase().trim()); }, 1200);
+      return;
+    }
+    onSend(email.toLowerCase().trim());
+  };
+
+  return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{width:'100%',maxWidth:400}}>
+        {/* Logo */}
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:48,justifyContent:'center'}}>
+          <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#2A8B82"/>
+            <path d="M14 7L21 14L14 21L7 14Z" fill="#5EEAD4" opacity="0.9"/>
+            <path d="M14 10L18 14L14 18L10 14Z" fill="#081413" opacity="0.6"/>
+          </svg>
+          <span style={{fontFamily:'Instrument Serif,serif',fontSize:24,color:'var(--fg-1)',letterSpacing:'-0.01em'}}>HomeRun</span>
+        </div>
+
+        <h1 style={{fontFamily:'Instrument Serif,serif',fontSize:36,lineHeight:1.1,
+          color:'var(--fg-1)',margin:'0 0 10px',letterSpacing:'-0.01em'}}>Tenant portal.</h1>
+        <p style={{fontSize:14,color:'var(--fg-3)',margin:'0 0 32px',lineHeight:1.6}}>
+          Enter your email and we'll send you a one-time sign-in code.
+        </p>
+
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <Inp value={email} onChange={setEmail} placeholder="your@email.com" type="email" autoFocus/>
+          {error&&<div style={{fontSize:13,color:'var(--out-500)',padding:'10px 14px',
+            background:'var(--out-tint)',borderRadius:'var(--r-1)',border:'1px solid rgba(224,122,95,0.25)'}}>
+            {error}
+          </div>}
+          <Btn variant="primary" size="lg" onClick={handleSend} disabled={!email.trim()||loading}
+            style={{width:'100%'}}>
+            {loading?'Sending code…':'Send sign-in code'}
+          </Btn>
+        </div>
+
+        <div style={{marginTop:32,borderTop:'1px solid var(--line-1)',paddingTop:24,textAlign:'center'}}>
+          <div style={{fontSize:12,color:'var(--fg-4)',marginBottom:12}}>Want to see the application form?</div>
+          <button onClick={()=>onSend('demo-apply')} style={{
+            background:'transparent',border:'1px solid var(--line-2)',color:'var(--fg-3)',
+            borderRadius:'var(--r-1)',padding:'8px 16px',cursor:'pointer',
+            fontFamily:'Geist,sans-serif',fontSize:13,display:'inline-flex',alignItems:'center',gap:6,
+          }}>
+            <i data-lucide="external-link" style={{width:13,height:13}}/>
+            Preview rental application form
+          </button>
+        </div>
+          border:'1px solid var(--line-1)',fontSize:12,color:'var(--fg-3)',lineHeight:1.6}}>
+          <div style={{fontWeight:600,color:'var(--fg-2)',marginBottom:6}}>Demo accounts</div>
+          {TENANT_DB.map(t=><div key={t.id} style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+            <span>{t.name}</span>
+            <span className="mono" style={{color:'var(--fg-4)'}}>{t.email}</span>
+          </div>)}
+          <div style={{marginTop:8,borderTop:'1px solid var(--line-1)',paddingTop:8,color:'var(--fg-4)'}}>
+            Code is always <span className="mono" style={{color:'var(--accent)'}}>123456</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── 2. CODE ENTRY ─────────────────────────────────────────────────────────────
+const CodeScreen = ({email,onVerify,onBack}) => {
+  const [code,setCode]=useState('');
+  const [error,setError]=useState('');
+  const [loading,setLoading]=useState(false);
+
+  const handleVerify = () => {
+    if(code.trim()!==DEMO_CODE){
+      setError('Incorrect code. Try 123456 for this demo.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setTimeout(()=>{
+      const tenant=TENANT_DB.find(t=>t.email===email);
+      setLoading(false);
+      onVerify(tenant);
+    }, 800);
+  };
+
+  return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{width:'100%',maxWidth:400}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:48,justifyContent:'center'}}>
+          <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#2A8B82"/>
+            <path d="M14 7L21 14L14 21L7 14Z" fill="#5EEAD4" opacity="0.9"/>
+            <path d="M14 10L18 14L14 18L10 14Z" fill="#081413" opacity="0.6"/>
+          </svg>
+          <span style={{fontFamily:'Instrument Serif,serif',fontSize:24,color:'var(--fg-1)',letterSpacing:'-0.01em'}}>HomeRun</span>
+        </div>
+
+        <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'transparent',
+          border:'none',color:'var(--fg-3)',cursor:'pointer',marginBottom:24,padding:0,fontSize:13}}>
+          <i data-lucide="arrow-left" style={{width:14,height:14}}/> Back
+        </button>
+
+        <h1 style={{fontFamily:'Instrument Serif,serif',fontSize:36,lineHeight:1.1,
+          color:'var(--fg-1)',margin:'0 0 10px'}}>Check your email.</h1>
+        <p style={{fontSize:14,color:'var(--fg-3)',margin:'0 0 6px',lineHeight:1.6}}>
+          We sent a 6-digit code to
+        </p>
+        <p style={{fontSize:14,color:'var(--fg-1)',fontWeight:600,margin:'0 0 32px'}}>{email}</p>
+
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <Inp value={code} onChange={setCode} placeholder="123456" type="text"
+            autoFocus style={{fontFamily:'Geist Mono,monospace',fontSize:20,letterSpacing:'0.15em',textAlign:'center'}}/>
+          {error&&<div style={{fontSize:13,color:'var(--out-500)',padding:'10px 14px',
+            background:'var(--out-tint)',borderRadius:'var(--r-1)',border:'1px solid rgba(224,122,95,0.25)'}}>
+            {error}
+          </div>}
+          <Btn variant="primary" size="lg" onClick={handleVerify} disabled={code.length<6||loading}
+            style={{width:'100%'}}>
+            {loading?'Verifying…':'Verify code'}
+          </Btn>
+          <Btn variant="ghost" size="sm" onClick={onBack} style={{width:'100%',color:'var(--fg-3)'}}>
+            Resend code
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── 3. TENANT DASHBOARD ───────────────────────────────────────────────────────
+const TenantDashboard = ({tenant,onSignOut}) => {
+  const [maintenanceOpen,setMaintenanceOpen]=useState(false);
+  const [renewalOpen,setRenewalOpen]=useState(false);
+  const [renewalDone,setRenewalDone]=useState(false);
+
+  const daysLeft = daysUntil(tenant.leaseEnd);
+  const leaseExpiringSoon = daysLeft!==null && daysLeft<=90 && daysLeft>0;
+  const leaseExpired = daysLeft!==null && daysLeft<=0;
+  const isS8 = tenant.lease==='Section 8';
+  const monthlyDue = isS8 ? tenant.tenantShare : tenant.rent;
+  const lastPayment = tenant.payments[0];
+  const hour = new Date().getHours();
+  const greeting = hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
+
+  useEffect(()=>{ setTimeout(()=>window.lucide&&window.lucide.createIcons(),60); });
+
+  return (
+    <div style={{minHeight:'100vh',background:'var(--teal-950)'}}>
+      {/* Top bar */}
+      <header style={{background:'var(--surface-0)',borderBottom:'1px solid var(--line-1)',
+        padding:'0 24px',height:56,display:'flex',alignItems:'center',justifyContent:'space-between',
+        position:'sticky',top:0,zIndex:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#2A8B82"/>
+            <path d="M14 7L21 14L14 21L7 14Z" fill="#5EEAD4" opacity="0.9"/>
+            <path d="M14 10L18 14L14 18L10 14Z" fill="#081413" opacity="0.6"/>
+          </svg>
+          <span style={{fontFamily:'Instrument Serif,serif',fontSize:18,color:'var(--fg-1)'}}>HomeRun</span>
+          <span style={{color:'var(--fg-4)',fontSize:13}}>· Tenant Portal</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:30,height:30,borderRadius:'var(--r-pill)',background:'var(--teal-700)',
+            color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:11,fontWeight:600}}>{tenant.initials}</div>
+          <Btn variant="ghost" size="sm" icon="log-out" onClick={onSignOut}>Sign out</Btn>
+        </div>
+      </header>
+
+      <main style={{padding:'28px 24px 80px',maxWidth:680,margin:'0 auto'}}>
+        {/* Greeting */}
+        <div style={{marginBottom:28}}>
+          <h1 style={{fontFamily:'Instrument Serif,serif',fontSize:38,lineHeight:1.05,
+            color:'var(--fg-1)',margin:0,letterSpacing:'-0.01em'}}>
+            {greeting}, {tenant.name.split(' ')[0]}.
+          </h1>
+          <p style={{fontSize:14,color:'var(--fg-3)',marginTop:8}}>
+            {tenant.unit} · {tenant.property} · {tenant.address}
+          </p>
+        </div>
+
+        {/* Lease renewal banner */}
+        {tenant.renewalOffered&&!renewalDone&&(
+          <div style={{marginBottom:20,padding:'18px 20px',
+            background:'linear-gradient(135deg, rgba(42,139,130,0.15), rgba(94,234,212,0.08))',
+            border:'1px solid var(--teal-600)',borderRadius:'var(--r-2)',
+            display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:36,height:36,borderRadius:'var(--r-pill)',
+                background:'var(--brand-faint)',color:'var(--accent)',
+                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                <i data-lucide="file-check" style={{width:16,height:16}}/>
+              </div>
+              <div>
+                <div style={{fontSize:14,fontWeight:600,color:'var(--fg-1)'}}>Your landlord is offering a lease renewal</div>
+                <div style={{fontSize:12,color:'var(--fg-3)',marginTop:3}}>
+                  Current lease ends {tenant.leaseEnd}. Review and accept to secure your unit.
+                </div>
+              </div>
+            </div>
+            <Btn variant="primary" size="sm" onClick={()=>setRenewalOpen(true)} style={{flexShrink:0}}>
+              Review offer
+            </Btn>
+          </div>
+        )}
+        {renewalDone&&(
+          <div style={{marginBottom:20,padding:'14px 18px',background:'var(--safe-tint)',
+            border:'1px solid rgba(136,176,122,0.3)',borderRadius:'var(--r-2)',
+            display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--safe-500)'}}>
+            <i data-lucide="check-circle" style={{width:16,height:16}}/>
+            Lease renewal submitted. Your landlord will be in touch to finalize.
+          </div>
+        )}
+
+        {/* Lease expiry warning */}
+        {leaseExpiringSoon&&!tenant.renewalOffered&&(
+          <div style={{marginBottom:20,padding:'14px 18px',
+            background:daysLeft<=30?'var(--out-tint)':'var(--play-tint)',
+            border:`1px solid ${daysLeft<=30?'rgba(224,122,95,0.3)':'rgba(217,178,111,0.3)'}`,
+            borderRadius:'var(--r-2)',display:'flex',alignItems:'center',gap:10,
+            fontSize:13,color:daysLeft<=30?'var(--out-500)':'var(--play-500)'}}>
+            <i data-lucide="calendar-clock" style={{width:16,height:16}}/>
+            Your lease expires in {daysLeft} days ({tenant.leaseEnd}). Contact your landlord about renewal.
+          </div>
+        )}
+        {leaseExpired&&(
+          <div style={{marginBottom:20,padding:'14px 18px',background:'var(--out-tint)',
+            border:'1px solid rgba(224,122,95,0.3)',borderRadius:'var(--r-2)',
+            display:'flex',alignItems:'center',gap:10,fontSize:13,color:'var(--out-500)'}}>
+            <i data-lucide="alert-octagon" style={{width:16,height:16}}/>
+            Your lease expired on {tenant.leaseEnd}. Please contact your landlord immediately.
+          </div>
+        )}
+
+        {/* Rent status card */}
+        <Card accent={tenant.status==='late'?'var(--out-500)':'var(--safe-500)'} style={{marginBottom:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+            <div>
+              <Eyebrow style={{marginBottom:8}}>Rent status</Eyebrow>
+              <div style={{fontFamily:'Instrument Serif,serif',fontSize:44,lineHeight:1,color:'var(--fg-1)',letterSpacing:'-0.02em'}}>
+                {fmt(monthlyDue)}
+              </div>
+              <div style={{fontSize:13,color:'var(--fg-3)',marginTop:6}}>per month · due 1st of each month</div>
+            </div>
+            <Badge tone={tenant.status==='late'?'out':'safe'} style={{fontSize:13,padding:'6px 14px'}}>
+              {tenant.status==='late'?`${tenant.daysLate} days late`:'Current'}
+            </Badge>
+          </div>
+          {isS8&&<div style={{padding:'12px 16px',background:'var(--play-tint)',borderRadius:'var(--r-1)',
+            border:'1px solid rgba(217,178,111,0.2)',fontSize:13,color:'var(--fg-2)',marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span>Housing authority (HAP)</span>
+              <span className="mono" style={{color:'var(--safe-500)'}}>{fmt(tenant.hapRent)} / mo</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <span>Your share</span>
+              <span className="mono" style={{color:tenant.status==='late'?'var(--out-500)':'var(--fg-1)'}}>{fmt(tenant.tenantShare)} / mo</span>
+            </div>
+          </div>}
+          {tenant.status==='late'&&<div style={{padding:'12px 16px',background:'var(--out-tint)',
+            borderRadius:'var(--r-1)',border:'1px solid rgba(224,122,95,0.25)',fontSize:13,color:'var(--out-400)'}}>
+            <strong style={{color:'var(--out-500)'}}>Payment overdue.</strong> Please contact your landlord at {tenant.landlordPhone} or pay via your usual method immediately.
+          </div>}
+          {tenant.status==='current'&&lastPayment&&<div style={{fontSize:12,color:'var(--fg-3)',
+            display:'flex',alignItems:'center',gap:6}}>
+            <i data-lucide="check-circle" style={{width:13,height:13,color:'var(--safe-500)'}}/>
+            Last payment {lastPayment.period} · {fmt(lastPayment.amount)} · {lastPayment.date}
+          </div>}
+        </Card>
+
+        {/* Lease details */}
+        <Card style={{marginBottom:16}}>
+          <Eyebrow style={{marginBottom:16}}>Lease details</Eyebrow>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+            {[
+              {k:'Unit',v:tenant.unit},
+              {k:'Lease type',v:tenant.lease},
+              {k:'Move-in date',v:tenant.moveIn},
+              {k:'Lease end',v:tenant.leaseEnd||'Month-to-month'},
+              {k:'Property',v:tenant.property,full:true},
+              {k:'Address',v:tenant.address,full:true},
+            ].map((r,i)=><div key={i} style={r.full?{gridColumn:'span 2'}:{}}>
+              <Eyebrow style={{marginBottom:4,fontSize:10}}>{r.k}</Eyebrow>
+              <div style={{fontSize:14,color:'var(--fg-1)'}}>{r.v}</div>
+            </div>)}
+          </div>
+        </Card>
+
+        {/* Payment history */}
+        <Card style={{marginBottom:16}} padding={0}>
+          <div style={{padding:'18px 20px 14px',borderBottom:'1px solid var(--line-1)'}}>
+            <Eyebrow>Payment history</Eyebrow>
+          </div>
+          {tenant.payments.map((p,i)=><div key={p.id} style={{
+            display:'flex',justifyContent:'space-between',alignItems:'center',
+            padding:'14px 20px',borderTop:i?'1px solid var(--line-1)':'none',
+          }}>
+            <div>
+              <div style={{fontSize:14,color:'var(--fg-1)',fontWeight:500}}>{p.period}</div>
+              <div style={{fontSize:12,color:'var(--fg-3)',marginTop:3}}>{p.method}{p.source==='HAP'?' · Housing authority':''}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div className="mono" style={{fontSize:15,color:'var(--fg-1)'}}>{fmt(p.amount)}</div>
+              <Badge tone={p.status==='paid'?'safe':'out'} style={{marginTop:4,fontSize:10}}>
+                {p.status==='paid'?'Paid':'Late'}
+              </Badge>
+            </div>
+          </div>)}
+        </Card>
+
+        {/* Actions */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+          <Btn variant="secondary" icon="wrench" size="md" onClick={()=>setMaintenanceOpen(true)}
+            style={{width:'100%',justifyContent:'center'}}>
+            Maintenance request
+          </Btn>
+          <a href={`mailto:${tenant.landlordEmail}?subject=Re: ${tenant.unit} — ${tenant.property}`}
+            style={{textDecoration:'none'}}>
+            <Btn variant="outline" icon="mail" size="md" style={{width:'100%',justifyContent:'center'}}>
+              Contact landlord
+            </Btn>
+          </a>
+        </div>
+
+        {/* Documents */}
+        <Card>
+          <Eyebrow style={{marginBottom:14}}>Documents</Eyebrow>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {[
+              {label:'Lease agreement',icon:'file-text',desc:'Your current lease on file'},
+              {label:'Rent receipts',icon:'receipt',desc:`${tenant.payments.filter(p=>p.status==='paid').length} payments on record`},
+              ...(tenant.lease==='Section 8'?[{label:'HAP addendum',icon:'key-round',desc:'Section 8 tenancy addendum'}]:[]),
+            ].map((d,i)=><button key={i} style={{
+              display:'flex',alignItems:'center',gap:14,padding:'12px 16px',
+              background:'var(--surface-2)',border:'1px solid var(--line-1)',
+              borderRadius:'var(--r-1)',cursor:'pointer',textAlign:'left',width:'100%',
+              fontFamily:'Geist,sans-serif',
+            }}>
+              <div style={{width:36,height:36,borderRadius:'var(--r-1)',background:'var(--brand-faint)',
+                color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                <i data-lucide={d.icon} style={{width:16,height:16}}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--fg-1)'}}>{d.label}</div>
+                <div style={{fontSize:12,color:'var(--fg-3)',marginTop:2}}>{d.desc}</div>
+              </div>
+              <i data-lucide="download" style={{width:14,height:14,color:'var(--fg-3)'}}/>
+            </button>)}
+          </div>
+        </Card>
+
+        {/* Landlord contact */}
+        <div style={{marginTop:16,padding:'14px 18px',background:'var(--surface-1)',
+          borderRadius:'var(--r-2)',border:'1px solid var(--line-1)',
+          display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:36,height:36,borderRadius:'var(--r-pill)',background:'var(--teal-700)',
+            color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:12,fontWeight:600,flexShrink:0}}>SH</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--fg-1)'}}>{tenant.landlord}</div>
+            <div style={{fontSize:12,color:'var(--fg-3)',marginTop:2}}>{tenant.landlordPhone} · {tenant.landlordEmail}</div>
+          </div>
+          <a href={`tel:${tenant.landlordPhone}`}>
+            <Btn variant="ghost" size="sm" icon="phone"/>
+          </a>
+        </div>
+      </main>
+
+      {/* Maintenance modal */}
+      {maintenanceOpen&&<MaintenanceModal tenant={tenant} onClose={()=>setMaintenanceOpen(false)}/>}
+      {renewalOpen&&<RenewalModal tenant={tenant} onClose={()=>setRenewalOpen(false)} onAccept={()=>{setRenewalOpen(false);setRenewalDone(true);}}/>}
+    </div>
+  );
+};
+
+// ── MAINTENANCE REQUEST MODAL ─────────────────────────────────────────────────
+const MaintenanceModal = ({tenant,onClose}) => {
+  const [issue,setIssue]=useState('');
+  const [location,setLocation]=useState('Kitchen');
+  const [urgency,setUrgency]=useState('normal');
+  const [notes,setNotes]=useState('');
+  const [submitted,setSubmitted]=useState(false);
+
+  useEffect(()=>{ setTimeout(()=>window.lucide&&window.lucide.createIcons(),60); });
+
+  const submit = () => {
+    if(!issue.trim()) return;
+    setSubmitted(true);
+  };
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,
+      background:'rgba(8,20,19,0.7)',display:'flex',alignItems:'flex-end',
+      justifyContent:'center',backdropFilter:'blur(4px)'}}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width:'100%',maxWidth:560,background:'var(--surface-3)',
+        border:'1px solid var(--line-2)',borderRadius:'var(--r-3) var(--r-3) 0 0',
+        boxShadow:'var(--shadow-2)',paddingBottom:'env(safe-area-inset-bottom,0px)',
+      }}>
+        {/* Handle */}
+        <div style={{display:'flex',justifyContent:'center',padding:'12px 0 0'}}>
+          <div style={{width:36,height:4,borderRadius:999,background:'var(--line-2)'}}/>
+        </div>
+        <div style={{padding:'16px 24px 12px',borderBottom:'1px solid var(--line-1)',
+          display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3 style={{fontSize:18,fontWeight:600,margin:0}}>Maintenance request</h3>
+          <button onClick={onClose} style={{background:'transparent',border:'none',
+            color:'var(--fg-3)',cursor:'pointer',padding:6}}>
+            <i data-lucide="x" style={{width:18,height:18}}/>
+          </button>
+        </div>
+
+        {submitted?(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:52,height:52,borderRadius:'var(--r-pill)',background:'var(--safe-tint)',
+              color:'var(--safe-500)',display:'flex',alignItems:'center',justifyContent:'center',
+              margin:'0 auto 16px'}}>
+              <i data-lucide="check-circle" style={{width:24,height:24}}/>
+            </div>
+            <h4 style={{fontFamily:'Instrument Serif,serif',fontSize:26,fontWeight:400,margin:'0 0 8px'}}>Request submitted.</h4>
+            <p style={{fontSize:14,color:'var(--fg-3)',lineHeight:1.6,margin:'0 0 24px'}}>
+              Your landlord has been notified and will follow up with you shortly.
+            </p>
+            <Btn variant="primary" onClick={onClose}>Done</Btn>
+          </div>
+        ):(
+          <div style={{padding:24,display:'flex',flexDirection:'column',gap:16,maxHeight:'70vh',overflow:'auto'}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',
+                color:'var(--fg-3)',marginBottom:6}}>Issue <span style={{color:'var(--out-500)'}}>*</span></div>
+              <input value={issue} onChange={e=>setIssue(e.target.value)} placeholder="e.g. Kitchen faucet leaking"
+                autoFocus style={{width:'100%',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+                borderRadius:'var(--r-1)',padding:'11px 14px',color:'var(--fg-1)',fontSize:15,outline:'none'}}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',
+                  color:'var(--fg-3)',marginBottom:6}}>Location</div>
+                <select value={location} onChange={e=>setLocation(e.target.value)} style={{
+                  width:'100%',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+                  borderRadius:'var(--r-1)',padding:'11px 12px',color:'var(--fg-1)',fontSize:14,
+                  cursor:'pointer',appearance:'none',
+                  backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23A39A86' stroke-width='1.5' fill='none'/></svg>")`,
+                  backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                  {['Kitchen','Bathroom','Bedroom','Living room','Hallway','Exterior','Other'].map(l=><option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',
+                  color:'var(--fg-3)',marginBottom:6}}>Urgency</div>
+                <select value={urgency} onChange={e=>setUrgency(e.target.value)} style={{
+                  width:'100%',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+                  borderRadius:'var(--r-1)',padding:'11px 12px',color:'var(--fg-1)',fontSize:14,
+                  cursor:'pointer',appearance:'none',
+                  backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23A39A86' stroke-width='1.5' fill='none'/></svg>")`,
+                  backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                  <option value="low">Low — not urgent</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High — needs attention soon</option>
+                  <option value="emergency">Emergency — safety issue</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',
+                color:'var(--fg-3)',marginBottom:6}}>Additional notes <span style={{fontStyle:'italic',textTransform:'none',letterSpacing:0}}>optional</span></div>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)}
+                placeholder="Any additional details that might help your landlord..."
+                rows={3} style={{width:'100%',background:'var(--surface-2)',border:'1px solid var(--line-2)',
+                borderRadius:'var(--r-1)',padding:'11px 14px',color:'var(--fg-1)',fontSize:14,
+                lineHeight:1.5,resize:'vertical',outline:'none'}}/>
+            </div>
+            {urgency==='emergency'&&<div style={{padding:'12px 14px',background:'var(--out-tint)',
+              borderRadius:'var(--r-1)',border:'1px solid rgba(224,122,95,0.25)',fontSize:13,color:'var(--out-400)'}}>
+              For life-threatening emergencies call <strong style={{color:'var(--out-500)'}}>911</strong>. For urgent building issues also call your landlord directly at {tenant.landlordPhone}.
+            </div>}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4}}>
+              <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+              <Btn variant="primary" icon="send" onClick={submit} disabled={!issue.trim()}>Submit request</Btn>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── RENEWAL MODAL ─────────────────────────────────────────────────────────────
+const RenewalModal = ({tenant,onClose,onAccept}) => {
+  const [agreed,setAgreed]=useState(false);
+  useEffect(()=>{ setTimeout(()=>window.lucide&&window.lucide.createIcons(),60); });
+
+  // Simulated renewal offer — 1 year at same rent
+  const newLeaseEnd = `${new Date(tenant.leaseEnd).getFullYear()+1}-${tenant.leaseEnd.slice(5)}`;
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,
+      background:'rgba(8,20,19,0.7)',display:'flex',alignItems:'flex-end',
+      justifyContent:'center',backdropFilter:'blur(4px)'}}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width:'100%',maxWidth:560,background:'var(--surface-3)',
+        border:'1px solid var(--line-2)',borderRadius:'var(--r-3) var(--r-3) 0 0',
+        boxShadow:'var(--shadow-2)',paddingBottom:'env(safe-area-inset-bottom,0px)',
+      }}>
+        <div style={{display:'flex',justifyContent:'center',padding:'12px 0 0'}}>
+          <div style={{width:36,height:4,borderRadius:999,background:'var(--line-2)'}}/>
+        </div>
+        <div style={{padding:'16px 24px 12px',borderBottom:'1px solid var(--line-1)',
+          display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3 style={{fontSize:18,fontWeight:600,margin:0}}>Lease renewal offer</h3>
+          <button onClick={onClose} style={{background:'transparent',border:'none',color:'var(--fg-3)',cursor:'pointer',padding:6}}>
+            <i data-lucide="x" style={{width:18,height:18}}/>
+          </button>
+        </div>
+        <div style={{padding:24,display:'flex',flexDirection:'column',gap:18}}>
+          <div style={{padding:'18px 20px',background:'var(--brand-faint)',
+            borderRadius:'var(--r-2)',border:'1px solid rgba(42,139,130,0.25)'}}>
+            <div style={{fontSize:13,color:'var(--fg-2)',marginBottom:14,lineHeight:1.5}}>
+              <strong style={{color:'var(--fg-1)'}}>{tenant.landlord}</strong> is offering to renew your lease at <strong style={{color:'var(--fg-1)'}}>{tenant.unit}</strong> under the following terms:
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              {[
+                {k:'Monthly rent',v:fmt(tenant.lease==='Section 8'?tenant.tenantShare:tenant.rent)+(tenant.lease==='Section 8'?' (your share)':'/mo')},
+                {k:'Lease type',v:'1-year'},
+                {k:'New start date',v:tenant.leaseEnd},
+                {k:'New end date',v:newLeaseEnd},
+              ].map((r,i)=><div key={i}>
+                <div style={{fontSize:10,fontWeight:500,letterSpacing:'0.08em',textTransform:'uppercase',color:'var(--fg-4)',marginBottom:4}}>{r.k}</div>
+                <div className="mono" style={{fontSize:14,color:'var(--fg-1)'}}>{r.v}</div>
+              </div>)}
+            </div>
+          </div>
+
+          <button onClick={()=>setAgreed(a=>!a)} style={{
+            display:'flex',alignItems:'flex-start',gap:12,padding:'14px 16px',
+            background:agreed?'var(--safe-tint)':'var(--surface-2)',
+            border:`1.5px solid ${agreed?'var(--safe-500)':'var(--line-2)'}`,
+            borderRadius:'var(--r-2)',cursor:'pointer',textAlign:'left',
+            fontFamily:'Geist,sans-serif',transition:'all 150ms',
+          }}>
+            <div style={{width:20,height:20,borderRadius:4,flexShrink:0,marginTop:1,
+              background:agreed?'var(--safe-500)':'transparent',
+              border:`1.5px solid ${agreed?'var(--safe-500)':'var(--line-2)'}`,
+              display:'flex',alignItems:'center',justifyContent:'center',transition:'all 120ms'}}>
+              {agreed&&<i data-lucide="check" style={{width:13,height:13,color:'white'}}/>}
+            </div>
+            <div style={{fontSize:13,color:agreed?'var(--fg-1)':'var(--fg-2)',lineHeight:1.5}}>
+              I agree to renew my lease under the terms above and understand my landlord will follow up to finalize the paperwork.
+            </div>
+          </button>
+
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <Btn variant="ghost" onClick={onClose}>Decline</Btn>
+            <Btn variant="primary" icon="check" onClick={onAccept} disabled={!agreed}>
+              Accept renewal
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── APP ROOT ──────────────────────────────────────────────────────────────────
+// ── APPLICATION FORM ──────────────────────────────────────────────────────────
+const ApplicationForm = ({unitId,unitLabel,propName,rent}) => {
+  const [step,setStep]=useState(1);
+  const TOTAL=5;
+
+  // Step 1 — Personal
+  const [name,setName]=useState('');
+  const [dob,setDob]=useState('');
+  const [phone,setPhone]=useState('');
+  const [email,setEmail]=useState('');
+  const [currentAddress,setCurrentAddress]=useState('');
+  const [timeAtAddress,setTimeAtAddress]=useState('');
+
+  // Step 2 — Employment & income
+  const [employer,setEmployer]=useState('');
+  const [employmentType,setEmploymentType]=useState('full-time');
+  const [monthlyIncome,setMonthlyIncome]=useState('');
+  const [timeAtJob,setTimeAtJob]=useState('');
+
+  // Step 3 — Household & vehicle
+  const [occupants,setOccupants]=useState('1');
+  const [hasPets,setHasPets]=useState(false);
+  const [petDetails,setPetDetails]=useState('');
+  const [hasVehicle,setHasVehicle]=useState(false);
+  const [vehicleYear,setVehicleYear]=useState('');
+  const [vehicleMake,setVehicleMake]=useState('');
+  const [vehicleModel,setVehicleModel]=useState('');
+  const [vehiclePlate,setVehiclePlate]=useState('');
+
+  // Step 4 — Background check / SSN
+  const [ssn,setSsn]=useState('');
+  const [ssnMasked,setSsnMasked]=useState(false);
+  const [bgConsent,setBgConsent]=useState(false);
+  const [signature,setSignature]=useState('');
+
+  // Step 5 — Confirmation
+  const [submitted,setSubmitted]=useState(false);
+
+  useEffect(()=>{ setTimeout(()=>window.lucide&&window.lucide.createIcons(),60); });
+
+  const fmtSSN = (v) => {
+    const digits=v.replace(/\D/g,'').slice(0,9);
+    if(digits.length<=3) return digits;
+    if(digits.length<=5) return digits.slice(0,3)+'-'+digits.slice(3);
+    return digits.slice(0,3)+'-'+digits.slice(3,5)+'-'+digits.slice(5);
+  };
+  const maskedSSN = ssn ? '***-**-'+ssn.replace(/\D/g,'').slice(-4) : '';
+
+  const submit = async () => {
+    const app = {
+      unit_id:unitId, unit_label:unitLabel, prop_name:propName, rent:parseFloat(rent)||0,
+      name, dob, phone, email, current_address:currentAddress, time_at_address:timeAtAddress,
+      employer, employment_type:employmentType, monthly_income:parseFloat(monthlyIncome)||0, time_at_job:timeAtJob,
+      occupants, has_pets:hasPets, pet_details:petDetails,
+      has_vehicle:hasVehicle, vehicle_year:vehicleYear, vehicle_make:vehicleMake,
+      vehicle_model:vehicleModel, vehicle_plate:vehiclePlate,
+      ssn_last4:ssn.replace(/\D/g,'').slice(-4),
+      bg_consent:bgConsent, signature, status:'pending',
+    };
+    // Write to Supabase (works when served over https)
+    try {
+      await supabase.from('applications').insert([app]);
+    } catch(e) {}
+    // Also write to localStorage for local testing
+    try {
+      const store=JSON.parse(localStorage.getItem('homerun_v2')||'{}');
+      const localApp={...app,id:'app-'+Date.now(),property:'hammond',submittedAt:new Date().toISOString().slice(0,10)};
+      store.applications=[localApp,...(store.applications||[])];
+      localStorage.setItem('homerun_v2',JSON.stringify(store));
+    } catch(e){}
+    setSubmitted(true);
+  };
+
+  const inpStyle={width:'100%',background:'#F4F4F2',border:'1px solid #D1D5DB',
+    borderRadius:6,padding:'11px 14px',color:'#1a1a1a',fontSize:15,outline:'none',
+    fontFamily:'Geist,sans-serif',boxSizing:'border-box'};
+  const labelStyle={display:'block',fontSize:11,fontWeight:600,letterSpacing:'0.08em',
+    textTransform:'uppercase',color:'#6B7280',marginBottom:6};
+  const fieldStyle={display:'flex',flexDirection:'column',gap:0};
+
+  if(submitted) return (
+    <div style={{minHeight:'100vh',background:'var(--teal-950)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{textAlign:'center',maxWidth:440}}>
+        <div style={{width:64,height:64,borderRadius:'var(--r-pill)',background:'var(--safe-tint)',
+          color:'var(--safe-500)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px'}}>
+          <i data-lucide="check-circle" style={{width:32,height:32}}/>
+        </div>
+        <h1 style={{fontFamily:'Instrument Serif,serif',fontSize:36,color:'var(--fg-1)',margin:'0 0 12px'}}>Application submitted.</h1>
+        <p style={{fontSize:14,color:'var(--fg-3)',lineHeight:1.6,margin:'0 0 8px'}}>
+          Thank you, {name.split(' ')[0]}. Your application for <strong style={{color:'var(--fg-1)'}}>{unitLabel}</strong> at <strong style={{color:'var(--fg-1)'}}>{propName}</strong> has been received.
+        </p>
+        <p style={{fontSize:13,color:'var(--fg-4)',lineHeight:1.6,margin:0}}>
+          The landlord will review your application and be in touch at {email}.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:'100vh',background:'#F9FAFB',fontFamily:'Geist,sans-serif'}}>
+      {/* Header */}
+      <div style={{background:'var(--teal-950)',padding:'16px 24px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#2A8B82"/>
+            <path d="M14 7L21 14L14 21L7 14Z" fill="#5EEAD4" opacity="0.9"/>
+            <path d="M14 10L18 14L14 18L10 14Z" fill="#081413" opacity="0.6"/>
+          </svg>
+          <span style={{fontFamily:'Instrument Serif,serif',fontSize:18,color:'var(--cream-50)'}}>HomeRun</span>
+          <span style={{color:'var(--cream-300)',fontSize:13}}>· Rental Application</span>
+        </div>
+        <div style={{fontSize:12,color:'var(--cream-300)'}}>Step {step} of {TOTAL}</div>
+      </div>
+
+      {/* Progress */}
+      <div style={{height:3,background:'#E5E7EB'}}>
+        <div style={{height:'100%',background:'#2A8B82',width:`${(step/TOTAL)*100}%`,transition:'width 300ms'}}/>
+      </div>
+
+      {/* Unit info banner */}
+      <div style={{background:'#EFF6FF',borderBottom:'1px solid #DBEAFE',padding:'12px 24px',
+        display:'flex',alignItems:'center',gap:16,justifyContent:'center'}}>
+        <div style={{fontSize:13,color:'#1e40af',textAlign:'center'}}>
+          Applying for <strong>{unitLabel}</strong> at <strong>{propName}</strong> · <strong style={{fontFamily:'Geist Mono,monospace'}}>${rent}/mo</strong>
+        </div>
+      </div>
+
+      <div style={{maxWidth:560,margin:'0 auto',padding:'32px 24px 80px'}}>
+        {/* Step 1 — Personal info */}
+        {step===1&&<>
+          <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 6px'}}>Personal information.</h2>
+          <p style={{fontSize:14,color:'#6B7280',margin:'0 0 28px',lineHeight:1.6}}>Basic information about you as the applicant.</p>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={fieldStyle}><label style={labelStyle}>Full legal name *</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="First Last" style={inpStyle}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div style={fieldStyle}><label style={labelStyle}>Date of birth *</label><input value={dob} onChange={e=>setDob(e.target.value)} type="date" style={inpStyle}/></div>
+              <div style={fieldStyle}><label style={labelStyle}>Phone *</label><input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="(555) 555-5555" type="tel" style={inpStyle}/></div>
+            </div>
+            <div style={fieldStyle}><label style={labelStyle}>Email address *</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" type="email" style={inpStyle}/></div>
+            <div style={fieldStyle}><label style={labelStyle}>Current address *</label><input value={currentAddress} onChange={e=>setCurrentAddress(e.target.value)} placeholder="123 Main St, City, State ZIP" style={inpStyle}/></div>
+            <div style={fieldStyle}><label style={labelStyle}>How long at current address?</label>
+              <select value={timeAtAddress} onChange={e=>setTimeAtAddress(e.target.value)} style={{...inpStyle,cursor:'pointer',appearance:'none',
+                backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/></svg>")`,
+                backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                <option value="">Select...</option>
+                {['Less than 6 months','6–12 months','1–2 years','2–5 years','5+ years'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+          </div>
+        </>}
+
+        {/* Step 2 — Employment */}
+        {step===2&&<>
+          <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 6px'}}>Employment & income.</h2>
+          <p style={{fontSize:14,color:'#6B7280',margin:'0 0 28px',lineHeight:1.6}}>We verify that monthly income is at least 3× the monthly rent (${Math.round(parseFloat(rent||0)*3).toLocaleString()}/mo minimum).</p>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={fieldStyle}><label style={labelStyle}>Employer name *</label><input value={employer} onChange={e=>setEmployer(e.target.value)} placeholder="Company name or Self-employed" style={inpStyle}/></div>
+            <div style={fieldStyle}><label style={labelStyle}>Employment type *</label>
+              <select value={employmentType} onChange={e=>setEmploymentType(e.target.value)} style={{...inpStyle,cursor:'pointer',appearance:'none',
+                backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/></svg>")`,
+                backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                {['Full-time','Part-time','Self-employed','Retired','Other'].map(o=><option key={o} value={o.toLowerCase().replace('-','').replace(' ','-')}>{o}</option>)}
+              </select>
+            </div>
+            <div style={fieldStyle}><label style={labelStyle}>Gross monthly income ($) *</label>
+              <div style={{position:'relative'}}>
+                <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#6B7280',fontSize:15}}>$</span>
+                <input value={monthlyIncome} onChange={e=>setMonthlyIncome(e.target.value)} type="number" placeholder="0" style={{...inpStyle,paddingLeft:28}}/>
+              </div>
+              {monthlyIncome&&<div style={{fontSize:12,marginTop:6,color:parseFloat(monthlyIncome)>=parseFloat(rent||0)*3?'#166534':'#991b1b'}}>
+                {parseFloat(monthlyIncome)>=parseFloat(rent||0)*3?'✓ Meets the 3× income requirement':'✗ Does not meet the 3× income requirement'}
+              </div>}
+            </div>
+            <div style={fieldStyle}><label style={labelStyle}>How long at current job?</label>
+              <select value={timeAtJob} onChange={e=>setTimeAtJob(e.target.value)} style={{...inpStyle,cursor:'pointer',appearance:'none',
+                backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/></svg>")`,
+                backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                <option value="">Select...</option>
+                {['Less than 6 months','6–12 months','1–2 years','2–5 years','5+ years'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+          </div>
+        </>}
+
+        {/* Step 3 — Household & vehicle */}
+        {step===3&&<>
+          <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 6px'}}>Household & vehicle.</h2>
+          <p style={{fontSize:14,color:'#6B7280',margin:'0 0 28px',lineHeight:1.6}}>Tell us about who will be living in the unit and any vehicles.</p>
+          <div style={{display:'flex',flexDirection:'column',gap:20}}>
+            <div style={fieldStyle}><label style={labelStyle}>Total number of occupants (including yourself) *</label>
+              <select value={occupants} onChange={e=>setOccupants(e.target.value)} style={{...inpStyle,cursor:'pointer',appearance:'none',
+                backgroundImage:`url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none'/></svg>")`,
+                backgroundRepeat:'no-repeat',backgroundPosition:'right 12px center',paddingRight:32}}>
+                {['1','2','3','4','5','6+'].map(o=><option key={o}>{o}</option>)}
+              </select>
+            </div>
+
+            {/* Pets toggle */}
+            <div>
+              <button onClick={()=>setHasPets(p=>!p)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+                width:'100%',padding:'14px 16px',cursor:'pointer',textAlign:'left',
+                background:hasPets?'#EFF6FF':'#F3F4F6',border:`1.5px solid ${hasPets?'#2A8B82':'#D1D5DB'}`,
+                borderRadius:8,transition:'all 150ms',fontFamily:'Geist,sans-serif'}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:600,color:'#1a1a1a'}}>Pets</div>
+                  <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{hasPets?'Pet details required below':'No pets'}</div>
+                </div>
+                <div style={{width:44,height:24,borderRadius:999,background:hasPets?'#2A8B82':'#D1D5DB',position:'relative',transition:'background 150ms',flexShrink:0}}>
+                  <div style={{position:'absolute',top:3,left:hasPets?20:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 150ms',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
+                </div>
+              </button>
+              {hasPets&&<input value={petDetails} onChange={e=>setPetDetails(e.target.value)} placeholder="Type, breed, weight (e.g. Dog, Labrador, 45 lbs)" style={{...inpStyle,marginTop:8}}/>}
+            </div>
+
+            {/* Vehicle toggle */}
+            <div>
+              <button onClick={()=>setHasVehicle(v=>!v)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+                width:'100%',padding:'14px 16px',cursor:'pointer',textAlign:'left',
+                background:hasVehicle?'#EFF6FF':'#F3F4F6',border:`1.5px solid ${hasVehicle?'#2A8B82':'#D1D5DB'}`,
+                borderRadius:8,transition:'all 150ms',fontFamily:'Geist,sans-serif'}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:600,color:'#1a1a1a'}}>Vehicle</div>
+                  <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{hasVehicle?'Vehicle details required below':'No vehicle'}</div>
+                </div>
+                <div style={{width:44,height:24,borderRadius:999,background:hasVehicle?'#2A8B82':'#D1D5DB',position:'relative',transition:'background 150ms',flexShrink:0}}>
+                  <div style={{position:'absolute',top:3,left:hasVehicle?20:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 150ms',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
+                </div>
+              </button>
+              {hasVehicle&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:8}}>
+                <input value={vehicleYear} onChange={e=>setVehicleYear(e.target.value)} placeholder="Year" style={inpStyle}/>
+                <input value={vehicleMake} onChange={e=>setVehicleMake(e.target.value)} placeholder="Make (e.g. Toyota)" style={inpStyle}/>
+                <input value={vehicleModel} onChange={e=>setVehicleModel(e.target.value)} placeholder="Model (e.g. Camry)" style={inpStyle}/>
+                <input value={vehiclePlate} onChange={e=>setVehiclePlate(e.target.value)} placeholder="License plate" style={inpStyle}/>
+              </div>}
+            </div>
+          </div>
+        </>}
+
+        {/* Step 4 — Background check */}
+        {step===4&&<>
+          <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 6px'}}>Background check consent.</h2>
+          <p style={{fontSize:14,color:'#6B7280',margin:'0 0 28px',lineHeight:1.6}}>Your SSN is used solely for background and credit check purposes.</p>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{padding:'14px 16px',background:'#FEF3C7',borderRadius:8,border:'1px solid #FCD34D',fontSize:13,color:'#92400E',lineHeight:1.5}}>
+              <strong>Demo notice:</strong> This is a simulated application. In production, your SSN would be transmitted directly to a licensed background check provider and never stored by HomeRun.
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Social Security Number *</label>
+              <div style={{position:'relative'}}>
+                <input
+                  value={ssnMasked?maskedSSN:ssn}
+                  onChange={e=>{ if(!ssnMasked) setSsn(fmtSSN(e.target.value)); }}
+                  onBlur={()=>setSsnMasked(true)}
+                  onFocus={()=>setSsnMasked(false)}
+                  placeholder="###-##-####"
+                  style={{...inpStyle,fontFamily:'Geist Mono,monospace',letterSpacing:'0.1em'}}/>
+                <button onClick={()=>setSsnMasked(m=>!m)} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',
+                  background:'transparent',border:'none',cursor:'pointer',color:'#6B7280',padding:4}}>
+                  <i data-lucide={ssnMasked?'eye':'eye-off'} style={{width:16,height:16}}/>
+                </button>
+              </div>
+              {ssn&&<div style={{fontSize:11,color:'#6B7280',marginTop:4,display:'flex',alignItems:'center',gap:5}}>
+                <i data-lucide="shield" style={{width:11,height:11}}/> Stored as {maskedSSN}
+              </div>}
+            </div>
+
+            <button onClick={()=>setBgConsent(c=>!c)} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'16px',
+              background:bgConsent?'#F0FDF4':'#F9FAFB',border:`1.5px solid ${bgConsent?'#16a34a':'#D1D5DB'}`,
+              borderRadius:8,cursor:'pointer',textAlign:'left',fontFamily:'Geist,sans-serif',transition:'all 150ms'}}>
+              <div style={{width:20,height:20,borderRadius:4,flexShrink:0,marginTop:1,
+                background:bgConsent?'#16a34a':'transparent',border:`1.5px solid ${bgConsent?'#16a34a':'#D1D5DB'}`,
+                display:'flex',alignItems:'center',justifyContent:'center',transition:'all 120ms'}}>
+                {bgConsent&&<i data-lucide="check" style={{width:13,height:13,color:'white'}}/>}
+              </div>
+              <div style={{fontSize:13,color:'#374151',lineHeight:1.6}}>
+                I authorize the landlord to obtain a background check and credit report using the information provided. I certify that all information in this application is true and accurate to the best of my knowledge.
+              </div>
+            </button>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Electronic signature (type your full name) *</label>
+              <input value={signature} onChange={e=>setSignature(e.target.value)}
+                placeholder="Type your full legal name to sign"
+                style={{...inpStyle,fontFamily:'Georgia,serif',fontSize:17,fontStyle:'italic',
+                  borderColor:signature?'#2A8B82':'#D1D5DB'}}/>
+              {signature&&<div style={{fontSize:11,color:'#6B7280',marginTop:4}}>
+                Signed electronically · {new Date().toLocaleDateString()}
+              </div>}
+            </div>
+          </div>
+        </>}
+
+        {/* Step 5 — Review & submit */}
+        {step===5&&<>
+          <h2 style={{fontFamily:'Instrument Serif,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 6px'}}>Review & submit.</h2>
+          <p style={{fontSize:14,color:'#6B7280',margin:'0 0 28px',lineHeight:1.6}}>Review your information before submitting.</p>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {[
+              {title:'Personal',items:[{k:'Name',v:name},{k:'DOB',v:dob},{k:'Phone',v:phone},{k:'Email',v:email},{k:'Address',v:currentAddress}]},
+              {title:'Employment',items:[{k:'Employer',v:employer},{k:'Type',v:employmentType},{k:'Monthly income',v:monthlyIncome?'$'+parseFloat(monthlyIncome).toLocaleString():''},{k:'Time at job',v:timeAtJob}]},
+              {title:'Household',items:[{k:'Occupants',v:occupants},{k:'Pets',v:hasPets?petDetails||'Yes':'No'},{k:'Vehicle',v:hasVehicle?`${vehicleYear} ${vehicleMake} ${vehicleModel}`.trim()||'Yes':'No'}]},
+              {title:'Background check',items:[{k:'SSN',v:maskedSSN},{k:'Consent',v:bgConsent?'✓ Given':'Not given'},{k:'Signature',v:signature}]},
+            ].map(s=><div key={s.title} style={{background:'#F9FAFB',borderRadius:8,border:'1px solid #E5E7EB',overflow:'hidden'}}>
+              <div style={{padding:'10px 16px',background:'#F3F4F6',borderBottom:'1px solid #E5E7EB',
+                fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280'}}>{s.title}</div>
+              <div style={{padding:'12px 16px',display:'flex',flexDirection:'column',gap:8}}>
+                {s.items.filter(r=>r.v).map((r,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+                  <span style={{color:'#6B7280'}}>{r.k}</span>
+                  <span style={{color:'#1a1a1a',fontWeight:500}}>{r.v}</span>
+                </div>)}
+              </div>
+            </div>)}
+            <div style={{padding:'12px 14px',background:'#EFF6FF',borderRadius:8,border:'1px solid #BFDBFE',
+              fontSize:12,color:'#1e40af',lineHeight:1.5}}>
+              By submitting, I confirm all information is accurate and consent to a background check.
+            </div>
+          </div>
+        </>}
+
+        {/* Navigation */}
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:32,gap:12}}>
+          {step>1
+            ?<button onClick={()=>setStep(s=>s-1)} style={{display:'flex',alignItems:'center',gap:6,
+              background:'transparent',border:'1px solid #D1D5DB',borderRadius:6,padding:'10px 16px',
+              cursor:'pointer',fontFamily:'Geist,sans-serif',fontSize:14,color:'#374151'}}>
+              <i data-lucide="arrow-left" style={{width:14,height:14}}/> Back
+            </button>
+            :<div/>}
+          {step<TOTAL
+            ?<button onClick={()=>setStep(s=>s+1)} style={{display:'flex',alignItems:'center',gap:6,
+              background:'#2A8B82',border:'1px solid #2A8B82',borderRadius:6,padding:'10px 20px',
+              cursor:'pointer',fontFamily:'Geist,sans-serif',fontSize:14,fontWeight:500,color:'white'}}>
+              Continue <i data-lucide="arrow-right" style={{width:14,height:14}}/>
+            </button>
+            :<button onClick={submit} disabled={!bgConsent||!signature} style={{
+              display:'flex',alignItems:'center',gap:6,
+              background:bgConsent&&signature?'#2A8B82':'#9CA3AF',
+              border:'none',borderRadius:6,padding:'10px 20px',
+              cursor:bgConsent&&signature?'pointer':'not-allowed',
+              fontFamily:'Geist,sans-serif',fontSize:14,fontWeight:500,color:'white'}}>
+              <i data-lucide="send" style={{width:14,height:14}}/> Submit application
+            </button>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── APPLY CONTEXT ─────────────────────────────────────────────────────────────
+function getApplyContext() {
+  try {
+    const stored = localStorage.getItem('homerun_apply');
+    if(stored){ const d=JSON.parse(stored); localStorage.removeItem('homerun_apply'); return d; }
+  } catch(e){}
+  const params = new URLSearchParams(window.location.search);
+  const unitId = params.get('apply');
+  if(unitId) return {unitId,unitLabel:params.get('unit')||'Unit',propName:params.get('prop')||'',rent:params.get('rent')||'0'};
+  return null;
+}
+
+function App() {
+  const applyContext = getApplyContext();
+  const [screen,setScreen]=useState(applyContext?'apply':'email');
+  const [email,setEmail]=useState('');
+  const [tenant,setTenant]=useState(null);
+  const [demoApply,setDemoApply]=useState(false);
+
+  useEffect(()=>{
+    // Check for existing Supabase session (from magic link redirect)
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session?.user?.email){
+        const t=TENANT_DB.find(x=>x.email===session.user.email);
+        if(t){ setTenant(t); setScreen('dashboard'); }
+      }
+    });
+    supabase.auth.onAuthStateChange((_,session)=>{
+      if(session?.user?.email){
+        const t=TENANT_DB.find(x=>x.email===session.user.email);
+        if(t){ setTenant(t); setScreen('dashboard'); }
+      }
+    });
+    setTimeout(()=>window.lucide&&window.lucide.createIcons(),60);
+  },[]);
+
+  if(screen==='apply'||demoApply){
+    return <ApplicationForm
+      unitId={applyContext?.unitId||'h-4'}
+      unitLabel={applyContext?.unitLabel||'Unit 4'}
+      propName={applyContext?.propName||'Hammond Fourplex'}
+      rent={applyContext?.rent||'1150'}/>;
+  }
+  if(screen==='dashboard'&&tenant){
+    return <TenantDashboard tenant={tenant} onSignOut={()=>{setScreen('email');setEmail('');setTenant(null);}}/>;
+  }
+  if(screen==='code'){
+    return <CodeScreen email={email} onVerify={(t)=>{setTenant(t);setScreen('dashboard');}} onBack={()=>setScreen('email')}/>;
+  }
+  return <EmailScreen onSend={(e)=>{
+    if(e==='demo-apply'){setDemoApply(true);return;}
+    setEmail(e);setScreen('code');
+  }}/>;
+}
+
+setTimeout(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>),80);
+</script>
+</body>
+</html>
