@@ -4568,6 +4568,7 @@ function reducer(state,action) {
   let next;
   switch(action.type) {
     case 'LOAD_STORE': return {...defaultStore(),...action.store};
+    case 'LOAD_APPLICATIONS': return {...state, applications:action.applications};
     case 'TOGGLE_COMP': {
       const groups=state.compliance[action.propertyId].map((g,gi)=>gi!==action.gi?g:{...g,items:g.items.map((it,ii)=>ii!==action.ii?it:{...it,done:!it.done})});
       next={...state,compliance:{...state.compliance,[action.propertyId]:groups}};break;}
@@ -4733,12 +4734,32 @@ function App() {
   const loadAndSyncStore = async (userId) => {
     const remoteStore = await loadStoreFromSupabase(userId);
     if(remoteStore && Object.keys(remoteStore).length > 0){
-      // Remote data exists — use it
       dispatch({type:'LOAD_STORE', store:remoteStore});
     } else {
-      // First login — push local data to Supabase
       const local = loadStore();
       await saveStoreToSupabase(userId, local);
+    }
+    // Fetch applications from dedicated table
+    const { data:apps, error:appError } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('submitted_at', {ascending:false});
+    console.log('Applications fetch:', {apps, appError, userId});
+    if(apps && apps.length > 0){
+      const normalized = apps.map(a=>({
+        id:a.id, unitId:a.unit_id, unitLabel:a.unit_label, propName:a.prop_name,
+        rent:a.rent, property:'hammond', name:a.name, dob:a.dob, phone:a.phone,
+        email:a.email, currentAddress:a.current_address, timeAtAddress:a.time_at_address,
+        employer:a.employer, employmentType:a.employment_type, monthlyIncome:a.monthly_income,
+        timeAtJob:a.time_at_job, occupants:a.occupants, hasPets:a.has_pets,
+        petDetails:a.pet_details, hasVehicle:a.has_vehicle, vehicleYear:a.vehicle_year,
+        vehicleMake:a.vehicle_make, vehicleModel:a.vehicle_model, vehiclePlate:a.vehicle_plate,
+        ssnLast4:a.ssn_last4, bgConsent:a.bg_consent, signature:a.signature,
+        status:a.status||'pending', denialReason:a.denial_reason, denialNote:a.denial_note,
+        reviewedAt:a.reviewed_at, submittedAt:a.submitted_at?.slice(0,10),
+      }));
+      dispatch({type:'LOAD_APPLICATIONS', applications:normalized});
     }
     setSyncReady(true);
   };
